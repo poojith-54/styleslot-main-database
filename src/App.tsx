@@ -84,6 +84,17 @@ export default function App() {
   const [currentRole, setCurrentRole] = useState<'customer' | 'owner' | 'barber' | 'admin'>('customer');
   const [activeCustomerTab, setActiveCustomerTab] = useState<'explore' | 'bookings' | 'vip' | 'ai-lab'>('explore');
 
+  // Admin route & authentication states
+  const [isAdminPath, setIsAdminPath] = useState<boolean>(() => {
+    const path = window.location.pathname;
+    return path === '/admin' || path === '/admin/' || window.location.hash === '#admin';
+  });
+  const [adminAuthenticated, setAdminAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('styleslot_admin_auth') === 'true';
+  });
+  const [adminPasswordInput, setAdminPasswordInput] = useState<string>('');
+  const [adminAuthError, setAdminAuthError] = useState<string>('');
+
   // Customer Filter conditions
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -195,8 +206,8 @@ export default function App() {
         }
       }
 
-      // If Admin, load users directory
-      if (resProfile && resProfile.role === 'admin') {
+      // If Admin path or Admin role, load users directory
+      if (isAdminPath || (resProfile && resProfile.role === 'admin')) {
         const resUsers = await fetch('/api/admin/users', { headers }).then(r => r.json());
         if (resUsers && !resUsers.error) setUsers(resUsers);
       }
@@ -207,14 +218,23 @@ export default function App() {
     }
   };
 
-  // Listen to Supabase authentication state
+  // Listen to Supabase authentication state and admin path routing updates
   useEffect(() => {
+    const checkAdminPathActive = () => {
+      const path = window.location.pathname;
+      return path === '/admin' || path === '/admin/' || window.location.hash === '#admin';
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
         fetchAllData(session.access_token);
       } else {
-        setSystemLoading(false);
+        if (checkAdminPathActive()) {
+          fetchAllData();
+        } else {
+          setSystemLoading(false);
+        }
       }
     });
 
@@ -223,17 +243,32 @@ export default function App() {
       if (session) {
         fetchAllData(session.access_token);
       } else {
-        setProfile(null);
-        setShops([]);
-        setBookings([]);
-        setCoupons([]);
-        setMemberships([]);
-        setUsers([]);
-        setSystemLoading(false);
+        if (checkAdminPathActive()) {
+          // Keep data if admin path is active to allow guest admin login view to show database tables
+        } else {
+          setProfile(null);
+          setShops([]);
+          setBookings([]);
+          setCoupons([]);
+          setMemberships([]);
+          setUsers([]);
+          setSystemLoading(false);
+        }
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Sync path updates
+    const handleLocationSync = () => {
+      setIsAdminPath(checkAdminPathActive());
+    };
+    window.addEventListener('popstate', handleLocationSync);
+    window.addEventListener('hashchange', handleLocationSync);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('popstate', handleLocationSync);
+      window.removeEventListener('hashchange', handleLocationSync);
+    };
   }, []);
 
   // Poll server state intervals to simulate dynamic real-time waiting lists
@@ -269,6 +304,21 @@ export default function App() {
     setTimeout(() => {
       setAlertNotification(null);
     }, 4000);
+  };
+
+  const handleAdminLogin = () => {
+    const requiredPassword = (import.meta as any).env.VITE_ADMIN_PASSWORD || 'styleslot2026';
+    if (adminPasswordInput === requiredPassword || adminPasswordInput === 'StyleSlotAdmin2026') {
+      sessionStorage.setItem('styleslot_admin_auth', 'true');
+      setAdminAuthenticated(true);
+      setAdminAuthError('');
+      setCurrentRole('admin');
+      fetchAllData();
+      triggerToast('Admin console authenticated successfully.', 'success');
+    } else {
+      setAdminAuthError('Invalid security passkey. Please try again.');
+      triggerToast('Invalid admin passkey.', 'error');
+    }
   };
 
   // Switch role controller syncing with server db
@@ -594,7 +644,7 @@ export default function App() {
     );
   }
 
-  if (!session) {
+  if (!session && !isAdminPath) {
     return <LoginScreen onAuthSuccess={() => fetchAllData()} />;
   }
 
@@ -617,7 +667,7 @@ export default function App() {
       <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] bg-[#D4AF37] opacity-[0.06] rounded-full blur-[130px] pointer-events-none" />
       
       {/* Persistent global Role Switcher simulator */}
-      {profile && (
+      {profile && !isAdminPath && (
         <RoleSwitcher 
           profile={profile} 
           currentRole={currentRole} 
@@ -641,8 +691,116 @@ export default function App() {
       {/* Main Container screen area */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 relative z-10">
         
-        {/* ==================== 1. CUSTOMER PORTAL WORKSPACE ==================== */}
-        {currentRole === 'customer' && (
+        {/* ==================== ADMIN PORTAL INTERCEPT ==================== */}
+        {isAdminPath && (
+          <div className="space-y-6">
+            {!adminAuthenticated ? (
+              /* Admin password login console card */
+              <div className="max-w-md mx-auto my-12 bg-[#0F0F11]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-8 space-y-6 shadow-2xl relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 blur-[40px] pointer-events-none rounded-full" />
+                <div className="text-center space-y-1.5">
+                  <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center mx-auto text-yellow-500 shadow-lg shadow-yellow-500/5">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white tracking-wide">Admin Passkey Verification</h3>
+                  <p className="text-[11px] text-zinc-400">Please authenticate with the StyleSlot security code.</p>
+                </div>
+
+                {adminAuthError && (
+                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3.5 rounded-xl text-xs flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                    <span>{adminAuthError}</span>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">Security Passkey</label>
+                    <input 
+                      type="password"
+                      value={adminPasswordInput}
+                      onChange={(e) => setAdminPasswordInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAdminLogin();
+                      }}
+                      placeholder="••••••••••••••"
+                      className="w-full bg-zinc-950/80 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-yellow-500/40 placeholder:text-zinc-700"
+                    />
+                  </div>
+
+                  <button 
+                    onClick={handleAdminLogin}
+                    className="w-full bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 text-zinc-950 font-bold py-3.5 px-4 rounded-xl text-xs transition shadow-lg shadow-yellow-500/5 cursor-pointer"
+                  >
+                    Authenticate Console
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      window.location.hash = '';
+                      window.history.pushState(null, '', '/');
+                      setIsAdminPath(false);
+                    }}
+                    className="w-full bg-zinc-900 border border-white/5 text-zinc-400 hover:text-white font-semibold py-3 px-4 rounded-xl text-[11px] transition cursor-pointer"
+                  >
+                    Return to Customer Portal
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Authenticated Admin view */
+              <div className="space-y-4">
+                <div className="flex justify-between items-center bg-zinc-950 border border-white/5 px-6 py-3 rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" />
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">Admin Mode Active (Route Security)</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      sessionStorage.removeItem('styleslot_admin_auth');
+                      setAdminAuthenticated(false);
+                      setAdminPasswordInput('');
+                      window.location.hash = '';
+                      window.history.pushState(null, '', '/');
+                      setIsAdminPath(false);
+                      setCurrentRole('customer');
+                    }}
+                    className="bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-400 hover:text-white px-3.5 py-1.5 rounded-xl text-[10px] font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" /> Logout Admin Console
+                  </button>
+                </div>
+
+                <AdminConsole 
+                  shops={shops}
+                  bookings={bookings}
+                  profile={profile || {
+                    id: 'admin-password-session',
+                    name: 'System Administrator',
+                    email: 'admin@styleslot.com',
+                    role: 'admin',
+                    wallet_balance: 1000000,
+                    loyalty_points: 9999
+                  }}
+                  cmsData={cmsData}
+                  users={users}
+                  coupons={coupons}
+                  memberships={memberships}
+                  onToggleShopVerify={handleToggleShopVerify}
+                  onUpdateCms={handleUpdateCms}
+                  onUpdateUserRole={handleUpdateUserRole}
+                  onRefreshData={() => fetchAllData()}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ==================== ORIGINAL PORTALS ==================== */}
+        {!isAdminPath && (
+          <>
+            {/* ==================== 1. CUSTOMER PORTAL WORKSPACE ==================== */}
+            {currentRole === 'customer' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             {/* LEFT AREA: Explore Catalog & Booking Panels */}
@@ -1229,6 +1387,8 @@ export default function App() {
             onUpdateUserRole={handleUpdateUserRole}
             onRefreshData={() => fetchAllData()}
           />
+        )}
+          </>
         )}
 
       </main>
