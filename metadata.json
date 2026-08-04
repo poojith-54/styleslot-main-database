@@ -1,0 +1,10 @@
+{
+  "name": "StyleSlot",
+  "description": "Premium barber & salon booking marketplace with AI styling recommendations, real-time queues, and a multi-role workspace.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,1483 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from './supabase';
+import { 
+  Shop, Booking, UserProfile, Coupon, Membership, 
+  Service, Barber, Review 
+} from './types';
+
+// Components
+import RoleSwitcher from './components/RoleSwitcher';
+import MockMap from './components/MockMap';
+import AiStylingAssistant from './components/AiStylingAssistant';
+import CheckoutWizard from './components/CheckoutWizard';
+import OwnerDashboard from './components/OwnerDashboard';
+import StylistWorkspace from './components/StylistWorkspace';
+import AdminConsole from './components/AdminConsole';
+import LoginScreen from './components/LoginScreen';
+
+// Icons
+import { 
+  Search, SlidersHorizontal, MapPin, Sparkles, Navigation, Heart, 
+  Compass, BadgePercent, Star, ShieldCheck, Ticket, 
+  DollarSign, Activity, Bell, CalendarDays, Zap, HelpCircle, ChevronRight, LogOut 
+} from 'lucide-react';
+
+export default function App() {
+  // Authentication & Profile States
+  const [session, setSession] = useState<any>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  
+  // Core Server Shared States
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  
+  // Admin only state
+  const [users, setUsers] = useState<UserProfile[]>([]);
+
+  // CMS configuration state
+  const [cmsData, setCmsData] = useState<any>({
+    hero_section: {
+      title: 'Elite Grooming for the Modern Gentleman',
+      subtitle: 'Discover the city\'s finest barbers, track real-time queue waiting times, and book bespoke styling sessions in seconds.',
+      banner: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=1200'
+    },
+    theme_settings: {
+      business_name: 'StyleSlot',
+      logo_url: '',
+      primary_color: '#D4AF37',
+      secondary_color: '#18181B'
+    },
+    about_section: {
+      title: 'A Legacy of Sophistication',
+      content: 'StyleSlot is a premium curation of luxury barbershops and styling suites. We blend old-school hospitality with high-technology queue analytics and virtual AI face-shape consultation.',
+      image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=600'
+    },
+    contact_details: {
+      phone: '+91 22 555-SLOT',
+      email: 'concierge@styleslot.com',
+      address: '777 Luxury Towers, Bandra West, Mumbai, MH, India',
+      working_hours: 'Mon - Sun: 09:00 AM - 10:00 PM'
+    },
+    social_links: {
+      facebook: 'https://facebook.com',
+      instagram: 'https://instagram.com'
+    },
+    seo_settings: {
+      title: 'StyleSlot - Premium Grooming Marketplace',
+      description: 'Book elite salons in real-time'
+    },
+    homepage_sections: {
+      show_hero: true,
+      show_featured: true,
+      show_all_shops: true,
+      show_memberships: true,
+      show_testimonials: true,
+      show_faqs: true
+    },
+    faqs: [],
+    testimonials: []
+  });
+
+  // App UI Navigation States
+  const [currentRole, setCurrentRole] = useState<'customer' | 'owner' | 'barber' | 'admin'>('customer');
+  const [activeCustomerTab, setActiveCustomerTab] = useState<'explore' | 'bookings' | 'vip' | 'ai-lab'>('explore');
+
+  // Customer Filter conditions
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [onlyHomeService, setOnlyHomeService] = useState<boolean>(false);
+  const [maxDistance, setMaxDistance] = useState<number>(5);
+
+  // Detail Modal & Checkout triggers
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [checkoutShop, setCheckoutShop] = useState<Shop | null>(null);
+
+  // Geographic location coordinates & address
+  const [userCoordinates, setUserCoordinates] = useState<{ lat: number; lng: number }>({ lat: 19.0760, lng: 72.8777 });
+  const [userAddress, setUserAddress] = useState<string>('Bandra West, Mumbai, India');
+  const [isMapModalOpen, setIsMapModalOpen] = useState<boolean>(false);
+  const [mapSearchQuery, setMapSearchQuery] = useState<string>('');
+
+  const handleMapSearch = () => {
+    if (!mapSearchQuery.trim()) return;
+    const query = mapSearchQuery.toLowerCase();
+    
+    if (query.includes('colaba') || query.includes('taj')) {
+      setUserCoordinates({ lat: 18.9220, lng: 72.8347 });
+      setUserAddress('Taj Mahal Palace, Colaba, Mumbai');
+      triggerToast('Centered coordinates to: Colaba District', 'info');
+    } else if (query.includes('bandra') || query.includes('link') || query.includes('carter')) {
+      setUserCoordinates({ lat: 19.0600, lng: 72.8300 });
+      setUserAddress('Bandra West, Mumbai, India');
+      triggerToast('Centered coordinates to: Bandra West', 'info');
+    } else if (query.includes('fort') || query.includes('heritage')) {
+      setUserCoordinates({ lat: 18.9350, lng: 72.8360 });
+      setUserAddress('Fort Historical Sector, Mumbai');
+      triggerToast('Centered coordinates to: Fort District', 'info');
+    } else if (query.includes('powai') || query.includes('hiranandani')) {
+      setUserCoordinates({ lat: 19.1176, lng: 72.9060 });
+      setUserAddress('Hiranandani Gardens, Powai, Mumbai');
+      triggerToast('Centered coordinates to: Powai Valley', 'info');
+    } else if (query.includes('juhu') || query.includes('beach')) {
+      setUserCoordinates({ lat: 19.1000, lng: 72.8200 });
+      setUserAddress('Juhu Tara Road, Juhu Beach, Mumbai');
+      triggerToast('Centered coordinates to: Juhu Beach', 'info');
+    } else {
+      const latOffset = (Math.random() - 0.5) * 0.04;
+      const lngOffset = (Math.random() - 0.5) * 0.04;
+      const targetLat = 19.0760 + latOffset;
+      const targetLng = 72.8777 + lngOffset;
+      
+      setUserCoordinates({ lat: targetLat, lng: targetLng });
+      const formattedAddress = mapSearchQuery
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      setUserAddress(`${formattedAddress}, Mumbai, India`);
+      triggerToast(`Geocoded and panned map to: ${formattedAddress}`, 'success');
+    }
+  };
+  
+  // Interactive review forms
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState<string>('');
+  const [reviewedBookingId, setReviewedBookingId] = useState<string | null>(null);
+
+  // Active home-service courier tracker simulation link
+  const [activeTrackerLink, setActiveTrackerLink] = useState<{ name: string; eta: number; status: string } | null>(null);
+
+  // System Loading / Feedback states
+  const [systemLoading, setSystemLoading] = useState<boolean>(true);
+  const [alertNotification, setAlertNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  // Fetch helper wrapping auth headers
+  const secureFetch = async (url: string, options: RequestInit = {}) => {
+    const token = session?.access_token;
+    const headers = {
+      ...options.headers,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    return fetch(url, { ...options, headers });
+  };
+
+  // Fetch initial state registry from `/api/*`
+  const fetchAllData = async (token?: string) => {
+    try {
+      const activeToken = token || session?.access_token;
+      const headers: Record<string, string> = {};
+      if (activeToken) {
+        headers['Authorization'] = `Bearer ${activeToken}`;
+      }
+
+      const [resProfile, resShops, resBookings, resCoupons, resMemberships, resCms] = await Promise.all([
+        fetch('/api/profile', { headers }).then(r => r.json()),
+        fetch('/api/shops', { headers }).then(r => r.json()),
+        fetch('/api/bookings', { headers }).then(r => r.json()),
+        fetch('/api/coupons', { headers }).then(r => r.json()),
+        fetch('/api/memberships', { headers }).then(r => r.json()),
+        fetch('/api/cms', { headers }).then(r => r.json())
+      ]);
+
+      if (resProfile && !resProfile.error) {
+        setProfile(resProfile);
+        setCurrentRole(resProfile.role);
+      }
+      if (resShops && !resShops.error) setShops(resShops);
+      if (resBookings && !resBookings.error) setBookings(resBookings);
+      if (resCoupons && !resCoupons.error) setCoupons(resCoupons);
+      if (resMemberships && !resMemberships.error) setMemberships(resMemberships);
+      if (resCms && !resCms.error) {
+        setCmsData((prev: any) => ({ ...prev, ...resCms }));
+        if (resCms.seo_settings?.title) {
+          document.title = resCms.seo_settings.title;
+        }
+      }
+
+      // If Admin, load users directory
+      if (resProfile && resProfile.role === 'admin') {
+        const resUsers = await fetch('/api/admin/users', { headers }).then(r => r.json());
+        if (resUsers && !resUsers.error) setUsers(resUsers);
+      }
+    } catch (err) {
+      console.error('Remote initialization failed, syncing simulated state models...', err);
+    } finally {
+      setSystemLoading(false);
+    }
+  };
+
+  // Listen to Supabase authentication state
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) {
+        fetchAllData(session.access_token);
+      } else {
+        setSystemLoading(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        fetchAllData(session.access_token);
+      } else {
+        setProfile(null);
+        setShops([]);
+        setBookings([]);
+        setCoupons([]);
+        setMemberships([]);
+        setUsers([]);
+        setSystemLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Poll server state intervals to simulate dynamic real-time waiting lists
+  useEffect(() => {
+    if (!session) return;
+    const pollId = setInterval(async () => {
+      try {
+        const resBookings = await secureFetch('/api/bookings').then(r => r.json());
+        if (resBookings && !resBookings.error) {
+          setBookings(resBookings);
+          // Scan if any home service booking is accepted to kickstart transit tracking
+          const inTransit = resBookings.find((b: Booking) => b.type === 'home-service' && b.status === 'accepted');
+          if (inTransit) {
+            setActiveTrackerLink({
+              name: inTransit.barberName,
+              eta: inTransit.estimatedWaitMinutes || 15,
+              status: 'Transit coordinates online'
+            });
+          } else {
+            setActiveTrackerLink(null);
+          }
+        }
+      } catch (e) {
+        // Silent recovery
+      }
+    }, 6000);
+    return () => clearInterval(pollId);
+  }, [session]);
+
+  // Show a self-clearing toast alert message
+  const triggerToast = (msg: string, type: 'success' | 'info' | 'error' = 'success') => {
+    setAlertNotification({ message: msg, type });
+    setTimeout(() => {
+      setAlertNotification(null);
+    }, 4000);
+  };
+
+  // Switch role controller syncing with server db
+  const handleRoleChange = async (newRole: 'customer' | 'owner' | 'barber' | 'admin') => {
+    try {
+      const response = await secureFetch('/api/profile/role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setProfile(data.profile);
+        setCurrentRole(newRole);
+        triggerToast(`Switched workspace to: ${newRole.toUpperCase()} mode`, 'info');
+        
+        // Refresh users roster if switching to admin role
+        if (newRole === 'admin') {
+          const resUsers = await secureFetch('/api/admin/users').then(r => r.json());
+          if (resUsers && !resUsers.error) setUsers(resUsers);
+        }
+      }
+    } catch (e) {
+      setCurrentRole(newRole);
+    }
+  };
+
+  // Add wallet deposit
+  const handleTopUp = async (amount: number) => {
+    try {
+      const response = await secureFetch('/api/profile/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount })
+      });
+      const data = await response.json();
+      if (data.success) {
+        if (profile) {
+          setProfile({ ...profile, walletBalance: data.walletBalance });
+        }
+        triggerToast(`Deposited ₹${amount.toFixed(2)} to wallet!`, 'success');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Toggle favorite salon item
+  const handleToggleFavorite = async (shopId: string) => {
+    if (!profile) return;
+    try {
+      const response = await secureFetch('/api/profile/favorite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shopId })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setProfile({ ...profile, favorites: data.favorites });
+        triggerToast(
+          data.favorites.includes(shopId) ? 'Added shop to favorites' : 'Removed shop from favorites',
+          'success'
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Booking completion wizard trigger
+  const handleCheckoutSuccess = (resData: any) => {
+    setBookings(prev => [resData.booking, ...prev]);
+    if (profile) {
+      setProfile({
+        ...profile,
+        walletBalance: resData.walletBalance,
+        loyaltyPoints: profile.loyaltyPoints + Math.floor(resData.booking.totalPrice)
+      });
+    }
+    setCheckoutShop(null);
+    setSelectedShop(null);
+    triggerToast('Appointment booked! Waiting queue list synced.', 'success');
+    setActiveCustomerTab('bookings');
+  };
+
+  // Cancel reservation
+  const handleCancelBooking = async (id: string) => {
+    try {
+      const response = await secureFetch(`/api/bookings/${id}/cancel`, {
+        method: 'POST'
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'rejected' } : b));
+        if (profile) {
+          setProfile({ ...profile, walletBalance: data.walletBalance });
+        }
+        triggerToast('Grooming slot canceled. Refund credited.', 'info');
+      } else {
+        triggerToast(data.error || 'Cancellation declined.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Accept / Decline requests (Owner workflow)
+  const handleAcceptRequest = async (id: string) => {
+    try {
+      const response = await secureFetch(`/api/bookings/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'accepted' })
+      });
+      if (response.ok) {
+        setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'accepted' } : b));
+        triggerToast('Appointment slot approved & barber dispatched!', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeclineRequest = async (id: string) => {
+    try {
+      const response = await secureFetch(`/api/bookings/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'rejected' })
+      });
+      if (response.ok) {
+        setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'rejected' } : b));
+        triggerToast('Appointment declined', 'info');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Complete job (Stylist workflow)
+  const handleCompleteJob = async (id: string) => {
+    try {
+      const response = await secureFetch(`/api/bookings/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' })
+      });
+      if (response.ok) {
+        setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'completed' } : b));
+        triggerToast('Grooming job completed successfully!', 'success');
+        
+        // Refresh shops database to fetch earnings updates
+        const updatedShops = await secureFetch('/api/shops').then(r => r.json());
+        setShops(updatedShops);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Onboard new stylist (Owner portal action)
+  const handleAddBarber = async (shopId: string, barberPayload: any) => {
+    try {
+      const response = await secureFetch(`/api/shops/${shopId}/barbers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(barberPayload)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setShops(prev => prev.map(s => s.id === shopId ? data.shop : s));
+        triggerToast('Stylist added to shop roster!', 'success');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Onboard new procedure service
+  const handleAddService = async (shopId: string, servicePayload: any) => {
+    try {
+      const response = await secureFetch(`/api/shops/${shopId}/services`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(servicePayload)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setShops(prev => prev.map(s => s.id === shopId ? data.shop : s));
+        triggerToast('Service catalog updated!', 'success');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Toggle Verification (Admin action)
+  const handleToggleShopVerify = async (shopId: string, currentStatus: boolean) => {
+    try {
+      const response = await secureFetch(`/api/shops/${shopId}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isVerified: !currentStatus })
+      });
+      if (response.ok) {
+        setShops(prev => prev.map(s => s.id === shopId ? { ...s, isVerified: !currentStatus } : s));
+        triggerToast(!currentStatus ? 'Awarded verification badge!' : 'Removed verification badge', 'info');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Update CMS Setting from Admin Console
+  const handleUpdateCms = async (key: string, value: any) => {
+    try {
+      const response = await secureFetch('/api/cms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value })
+      });
+      if (response.ok) {
+        setCmsData((prev: any) => ({ ...prev, [key]: value }));
+        triggerToast('Website content updated live!', 'success');
+      } else {
+        triggerToast('Failed to update content', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      triggerToast('Network error while saving settings', 'error');
+    }
+  };
+
+  // Update user role from Admin Console
+  const handleUpdateUserRole = async (userId: string, newRole: 'customer' | 'owner' | 'barber' | 'admin') => {
+    try {
+      const response = await secureFetch(`/api/admin/users/${userId}/role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole })
+      });
+      if (response.ok) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+        triggerToast(`Updated user role to: ${newRole.toUpperCase()}`, 'success');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Submit dynamic rating / review comments
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewedBookingId) return;
+
+    try {
+      const response = await secureFetch(`/api/bookings/${reviewedBookingId}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: reviewRating, comment: reviewComment })
+      });
+      if (response.ok) {
+        setBookings(prev => prev.map(b => b.id === reviewedBookingId ? { ...b, rating: reviewRating, reviewText: reviewComment } : b));
+        
+        // Refresh shops database
+        const resShops = await secureFetch('/api/shops').then(r => r.json());
+        if (resShops && !resShops.error) setShops(resShops);
+
+        setReviewedBookingId(null);
+        setReviewComment('');
+        triggerToast('Thank you for your rating!', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Logout handler
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  // Emergency matching logic
+  const handleEmergencyInstapassMatch = () => {
+    if (shops.length === 0) return;
+    const sortedByDistance = [...shops].sort((a, b) => a.distance - b.distance);
+    const closest = sortedByDistance[0];
+    setCheckoutShop(closest);
+    triggerToast(`Matched closest: ${closest.name} (${closest.distance}km). Booking Haircut!`, 'success');
+  };
+
+  // Dynamically calculate distance for each shop based on current userCoordinates
+  const shopsWithDynamicDistance = shops.map(shop => {
+    const dx = (shop.coordinates.lng - userCoordinates.lng) * 80;
+    const dy = (shop.coordinates.lat - userCoordinates.lat) * 110;
+    const computedDistance = parseFloat(Math.sqrt(dx * dx + dy * dy).toFixed(1));
+    return {
+      ...shop,
+      distance: computedDistance
+    };
+  });
+
+  // Customer Catalog Filters
+  const filteredShops = shopsWithDynamicDistance.filter((shop) => {
+    const matchesSearch = shop.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          shop.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          shop.features.some(f => f.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = selectedCategory === 'All' || shop.categories.includes(selectedCategory) || (selectedCategory === 'Home Service' && shop.homeService);
+    const matchesHomeToggle = !onlyHomeService || shop.homeService;
+    const matchesDistance = shop.distance <= maxDistance;
+    return matchesSearch && matchesCategory && matchesHomeToggle && matchesDistance;
+  });
+
+  const isFavorite = (shopId: string) => profile?.favorites.includes(shopId) || false;
+
+  if (systemLoading) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center justify-center font-sans">
+        <div className="w-16 h-16 rounded-full border-4 border-yellow-500/10 border-t-yellow-500 animate-spin" />
+        <h3 className="text-lg font-bold tracking-widest text-[#D4AF37] uppercase mt-6">StyleSlot</h3>
+        <p className="text-zinc-500 text-xs mt-2">Initializing secure luxury marketplace...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <LoginScreen onAuthSuccess={() => fetchAllData()} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] text-white font-sans flex flex-col overflow-x-hidden relative pb-16">
+      
+      {/* Inject custom variables for CMS custom styles */}
+      <style dangerouslySetInnerHTML={{__html: `
+        :root {
+          --primary-color: ${cmsData.theme_settings?.primary_color || '#D4AF37'};
+          --secondary-color: ${cmsData.theme_settings?.secondary_color || '#18181B'};
+        }
+        .bg-theme-primary { background-color: var(--primary-color) !important; }
+        .text-theme-primary { color: var(--primary-color) !important; }
+        .border-theme-primary { border-color: var(--primary-color) !important; }
+        .bg-theme-secondary { background-color: var(--secondary-color) !important; }
+      `}} />
+
+      {/* Visual background glows */}
+      <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] bg-[#D4AF37] opacity-[0.06] rounded-full blur-[130px] pointer-events-none" />
+      
+      {/* Persistent global Role Switcher simulator */}
+      {profile && (
+        <RoleSwitcher 
+          profile={profile} 
+          currentRole={currentRole} 
+          onRoleChange={handleRoleChange} 
+          onTopUp={handleTopUp} 
+        />
+      )}
+
+      {/* Floating alert notifications banner */}
+      {alertNotification && (
+        <div className={`fixed top-20 right-4 p-4 rounded-2xl shadow-2xl z-50 border max-w-sm flex items-center gap-3 animate-slideIn ${
+          alertNotification.type === 'success' 
+            ? 'bg-emerald-950/90 border-emerald-500/30 text-emerald-300' 
+            : 'bg-[#18181B] border-yellow-500/30 text-yellow-300'
+        }`}>
+          <div className="w-2 h-2 rounded-full bg-current animate-ping" />
+          <span className="text-xs font-semibold">{alertNotification.message}</span>
+        </div>
+      )}
+
+      {/* Main Container screen area */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 relative z-10">
+        
+        {/* ==================== 1. CUSTOMER PORTAL WORKSPACE ==================== */}
+        {currentRole === 'customer' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* LEFT AREA: Explore Catalog & Booking Panels */}
+            <div className="lg:col-span-8 space-y-6">
+              
+              {/* Dynamic CMS Splash Hero Banner */}
+              {cmsData.homepage_sections?.show_hero && (
+                <div 
+                  className="relative h-60 rounded-3xl overflow-hidden bg-gradient-to-r from-black via-zinc-950 to-transparent border border-white/5 shadow-2xl bg-cover bg-center"
+                  style={{ backgroundImage: `linear-gradient(to right, black, rgba(9,9,11,0.5), transparent), url('${cmsData.hero_section?.banner || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=1200'}')` }}
+                >
+                  <div className="relative z-20 h-full p-8 flex flex-col justify-center">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4 text-theme-primary fill-theme-primary" />
+                      <span className="text-theme-primary font-mono tracking-widest text-xs uppercase font-extrabold">Next-Gen Grooming Solutions</span>
+                    </div>
+                    
+                    <h1 className="text-3xl font-extrabold max-w-md leading-tight text-white mb-3">
+                      {cmsData.hero_section?.title || 'StyleSlot Premium Booking Marketplace'}
+                    </h1>
+                    
+                    <p className="text-xs text-zinc-300 max-w-sm leading-relaxed mb-4">
+                      {cmsData.hero_section?.subtitle || 'Instantly book nearby luxury barbershops or authorize premium house call visits.'}
+                    </p>
+
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => setActiveCustomerTab('ai-lab')}
+                        className="bg-theme-primary text-zinc-950 px-5 py-2 rounded-full font-bold text-xs hover:scale-105 transition-all shadow-md cursor-pointer"
+                      >
+                        Scan Face Symmetry
+                      </button>
+                      
+                      <button 
+                        onClick={handleEmergencyInstapassMatch}
+                        className="bg-red-500/10 text-red-400 border border-red-500/40 px-5 py-2 rounded-full font-bold text-xs hover:bg-red-500/20 transition-all flex items-center gap-1 cursor-pointer animate-pulse"
+                      >
+                        <Zap className="w-3.5 h-3.5 fill-red-400" /> Emergency Instapass
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Category Pills Slider */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center pr-1">
+                  <h4 className="text-xs uppercase font-mono tracking-widest text-zinc-400">Discover Service Categories</h4>
+                  {selectedCategory !== 'All' && (
+                    <button 
+                      onClick={() => setSelectedCategory('All')} 
+                      className="text-[10px] text-theme-primary hover:underline"
+                    >
+                      Clear Category Filter
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { name: 'All', icon: '💎' },
+                    { name: 'Haircut', icon: '✂️' },
+                    { name: 'Beard Styling', icon: '🧔' },
+                    { name: 'Hair Spa', icon: '💆‍♂️' },
+                    { name: 'Hair Coloring', icon: '🎨' },
+                    { name: 'Facial', icon: '🧖‍♂️' },
+                    { name: 'Home Service', icon: '🏠' }
+                  ].map((cat) => {
+                    const isSel = selectedCategory === cat.name;
+                    return (
+                      <button
+                        key={cat.name}
+                        onClick={() => setSelectedCategory(cat.name)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-full border text-xs font-bold transition-all cursor-pointer ${
+                          isSel 
+                            ? 'bg-[#D4AF37]/15 border-theme-primary text-theme-primary font-extrabold shadow-md shadow-yellow-500/5' 
+                            : 'bg-white/5 border-white/5 text-zinc-300 hover:bg-[#D4AF37]/10'
+                        }`}
+                      >
+                        <span>{cat.icon}</span>
+                        <span>{cat.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* MAIN CONTENT TAB SELECTORS */}
+              <div className="flex border-b border-white/5 bg-zinc-950/40 rounded-xl p-1 gap-1">
+                {[
+                  { id: 'explore', label: 'Explore Shops' },
+                  { id: 'bookings', label: 'Queue & History' },
+                  { id: 'vip', label: 'VIP Passports' },
+                  { id: 'ai-lab', label: 'AI Grooming Lab' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveCustomerTab(tab.id as any)}
+                    className={`flex-1 py-2 text-center text-xs font-bold tracking-wide rounded-lg transition-all ${
+                      activeCustomerTab === tab.id 
+                        ? 'bg-zinc-900 border border-white/10 text-theme-primary' 
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* TAB CONTENT: EXPLORE GRID */}
+              {activeCustomerTab === 'explore' && cmsData.homepage_sections?.show_all_shops && (
+                <div className="space-y-6">
+                  
+                  {/* Fine Tuning Search Filters Bar */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
+                    <div className="relative flex-1 w-full">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search salon names, features (Espresso, AC) or specialties..."
+                        className="w-full bg-zinc-950 border border-zinc-900 rounded-xl py-2 pl-10 pr-4 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-yellow-500/50"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-4 w-full md:w-auto shrink-0">
+                      <div className="flex items-center gap-2 flex-1 md:flex-initial">
+                        <span className="text-[10px] font-mono text-zinc-500 uppercase">Within:</span>
+                        <input
+                          type="range"
+                          min="1"
+                          max="8"
+                          step="0.5"
+                          value={maxDistance}
+                          onChange={(e) => setMaxDistance(parseFloat(e.target.value))}
+                          className="w-24 accent-yellow-500"
+                        />
+                        <span className="text-[10px] font-mono text-theme-primary font-bold whitespace-nowrap">{maxDistance} km</span>
+                      </div>
+
+                      <label className="flex items-center gap-2 select-none shrink-0 cursor-pointer text-xs">
+                        <input
+                          type="checkbox"
+                          checked={onlyHomeService}
+                          onChange={(e) => setOnlyHomeService(e.target.checked)}
+                          className="w-3.5 h-3.5 accent-yellow-500"
+                        />
+                        <span className="text-[10px] font-mono text-zinc-400 uppercase">Home Service Calls</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Listings Grid */}
+                  {filteredShops.length === 0 ? (
+                    <div className="text-center py-12 bg-white/5 border border-white/5 rounded-2xl text-zinc-500 text-xs">
+                      No barber shops match your filters. Try resetting search parameters.
+                    </div>
+                  ) : (
+                    <div id="explore-catalog-grid" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {filteredShops.map((shop) => (
+                        <div 
+                          key={shop.id}
+                          className="bg-[#18181B]/40 border border-white/10 rounded-2xl overflow-hidden hover:border-yellow-500/40 transition-all group flex flex-col shadow-lg backdrop-blur-md"
+                        >
+                          {/* Banner */}
+                          <div className="h-32 bg-zinc-900 relative">
+                            <img 
+                              src={shop.image} 
+                              alt={shop.name} 
+                              className="w-full h-full object-cover grayscale transition-transform group-hover:scale-105 duration-500" 
+                            />
+                            
+                            <div className="absolute top-3 left-3 flex gap-1">
+                              {shop.isVerified && (
+                                <span className="bg-emerald-500 text-zinc-950 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow">
+                                  VERIFIED
+                                </span>
+                              )}
+                              {shop.homeService && (
+                                <span className="bg-theme-primary text-zinc-950 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow">
+                                  DELIVERY OK
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleFavorite(shop.id);
+                              }}
+                              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white hover:text-red-400 transition"
+                            >
+                              <Heart className={`w-4 h-4 ${isFavorite(shop.id) ? 'text-red-500 fill-red-500' : 'text-zinc-400'}`} />
+                            </button>
+                          </div>
+
+                          <div className="p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                              <div className="flex justify-between items-start gap-2">
+                                <h3 className="font-bold text-white text-sm group-hover:text-yellow-400 transition">{shop.name}</h3>
+                                <div className="flex items-center text-yellow-500 font-bold text-xs shrink-0">
+                                  ★ {shop.rating}
+                                </div>
+                              </div>
+                              <p className="text-[11px] text-zinc-400 mt-1 truncate">{shop.address}</p>
+                              
+                              <div className="flex flex-wrap gap-1 mt-2.5">
+                                {shop.categories.slice(0, 3).map(cat => (
+                                  <span key={cat} className="text-[8px] uppercase tracking-wide bg-zinc-900 border border-white/5 text-zinc-400 px-1.5 py-0.5 rounded font-mono">
+                                    {cat}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between z-10">
+                              <span className="text-[10px] text-zinc-500 font-mono">
+                                📍 {shop.distance} km nearby &bull; {shop.workingHours}
+                              </span>
+                              
+                              <button
+                                onClick={() => setSelectedShop(shop)}
+                                className="text-theme-primary font-bold text-xs uppercase tracking-wider flex items-center gap-1 hover:text-yellow-300 cursor-pointer"
+                              >
+                                View Rates <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* CMS About Section */}
+                  <div className="p-8 rounded-3xl border border-white/5 bg-gradient-to-br from-zinc-950 via-zinc-900/60 to-black grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div>
+                      <h3 className="text-xl font-extrabold text-white tracking-tight">{cmsData.about_section?.title}</h3>
+                      <p className="text-xs text-zinc-400 mt-3 leading-relaxed">{cmsData.about_section?.content}</p>
+                    </div>
+                    {cmsData.about_section?.image && (
+                      <img src={cmsData.about_section.image} alt="Heritage branding" className="w-full h-44 object-cover rounded-2xl border border-white/10" />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB CONTENT: CLIENT BOOKING HISTORY */}
+              {activeCustomerTab === 'bookings' && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-theme-primary flex items-center gap-1.5">
+                    <CalendarDays className="w-4 h-4" /> SECURE BOOKINGS & WAITLISTS
+                  </h3>
+
+                  {bookings.filter(b => b.customerEmail === profile?.email).length === 0 ? (
+                    <div className="text-center py-12 bg-white/5 border border-white/5 rounded-2xl text-zinc-500 text-xs">
+                      No active bookings logs registered. Pick a salon from the list above and test checkout.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {bookings
+                        .filter(b => b.customerEmail === profile?.email)
+                        .map((bk) => (
+                          <div 
+                            key={bk.id} 
+                            className="p-4 rounded-2xl bg-zinc-900/80 border border-white/15 hover:border-yellow-500/15 transition-all"
+                          >
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                              <div className="flex gap-3">
+                                {bk.shopImage && (
+                                  <img src={bk.shopImage} alt={bk.shopName} className="w-12 h-12 object-cover rounded-xl shrink-0" />
+                                )}
+                                <div>
+                                  <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                                    {bk.shopName}
+                                    <span className={`px-2 py-0.5 text-[8px] font-bold rounded uppercase ${
+                                      bk.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25' :
+                                      bk.status === 'accepted' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/25' :
+                                      bk.status === 'rejected' ? 'bg-red-500/10 text-red-400 border border-red-500/25' :
+                                      'bg-yellow-500/10 text-yellow-500 border border-yellow-500/25'
+                                    }`}>
+                                      {bk.status}
+                                    </span>
+                                  </h4>
+                                  <p className="text-[10px] text-zinc-400 mt-1">
+                                    ✂️ {bk.serviceNames.join(', ')} &bull; Stylist: <span className="font-semibold text-white">{bk.barberName}</span>
+                                  </p>
+                                  <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                                    🗓️ Date: {bk.date} &bull; Time Slot: {bk.time} &bull; Total Paid: ₹{bk.totalPrice}
+                                  </p>
+                                  {bk.type === 'home-service' && bk.address && (
+                                    <p className="text-[9px] text-amber-500/70 font-mono mt-0.5">🏠 Dispatch location: {bk.address}</p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Interactive operations block */}
+                              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                {bk.status === 'pending' && (
+                                  <button
+                                    onClick={() => handleCancelBooking(bk.id)}
+                                    className="px-3 py-1.5 bg-red-950/60 border border-red-500/30 text-red-400 font-semibold rounded-lg text-[10px] hover:bg-red-900/50"
+                                  >
+                                    Cancel & Refund
+                                  </button>
+                                )}
+
+                                {bk.status === 'completed' && !bk.rating && (
+                                  <button
+                                    onClick={() => setReviewedBookingId(bk.id)}
+                                    className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-lg text-[10px] border border-white/5"
+                                  >
+                                    Submit Review
+                                  </button>
+                                )}
+
+                                {bk.status === 'completed' && bk.rating && (
+                                  <span className="text-[10px] font-mono text-zinc-500">Reviewed &bull; {bk.rating}★</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Live Queue feedback */}
+                            {(bk.status === 'pending' || bk.status === 'accepted') && (
+                              <div className="mt-3 pt-3 border-t border-white/5 flex justify-between items-center text-[10px] text-zinc-400 font-mono">
+                                <span>Queue Position: #{bk.queueNumber}</span>
+                                <span className="text-theme-primary">Est. Seat Waiting: {bk.estimatedWaitMinutes} mins</span>
+                              </div>
+                            )}
+
+                          </div>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Review feedback form popover */}
+                  {reviewedBookingId && (
+                    <div className="p-4 bg-zinc-950 border border-yellow-500/30 rounded-2xl space-y-3">
+                      <h4 className="text-xs font-bold text-white">Rate your Grooming Experience</h4>
+                      <form onSubmit={handleSubmitReview} className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-zinc-400">Score:</span>
+                          {[1, 2, 3, 4, 5].map((num) => (
+                            <button
+                              key={num}
+                              type="button"
+                              onClick={() => setReviewRating(num)}
+                              className={`text-sm ${reviewRating >= num ? 'text-yellow-400' : 'text-zinc-600'}`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          value={reviewComment}
+                          onChange={(e) => setReviewComment(e.target.value)}
+                          placeholder="What did you think of the precision cut or shave?"
+                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                        />
+                        <div className="flex justify-end gap-2 text-xs">
+                          <button type="button" onClick={() => setReviewedBookingId(null)} className="text-zinc-400">Cancel</button>
+                          <button type="submit" className="bg-[#D4AF37] text-zinc-950 font-bold px-3 py-1 rounded">Post Review</button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+              {/* TAB CONTENT: VIP ACCREDITATION */}
+              {activeCustomerTab === 'vip' && cmsData.homepage_sections?.show_memberships && (
+                <div className="space-y-6">
+                  <div className="text-center max-w-sm mx-auto space-y-1">
+                    <h3 className="text-lg font-bold text-white">StyleSlot VIP Member Club</h3>
+                    <p className="text-xs text-zinc-400">Unlock absolute queue prioritization, complimentary styling items, and home delivery fee exemptions.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {memberships.map((mem) => (
+                      <div 
+                        key={mem.id} 
+                        className={`p-6 rounded-3xl border flex flex-col justify-between h-80 relative overflow-hidden bg-zinc-950/80 ${
+                          mem.id === 'mem-2' 
+                            ? 'border-yellow-500/50 bg-gradient-to-b from-zinc-950 to-yellow-500/5 shadow-yellow-500/5 shadow-2xl' 
+                            : 'border-white/5'
+                        }`}
+                      >
+                        {mem.id === 'mem-2' && (
+                          <span className="absolute top-3 right-3 text-[8px] bg-theme-primary text-zinc-950 font-mono font-bold px-2 py-0.5 rounded-full">POPULAR</span>
+                        )}
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{mem.title}</h4>
+                          <div className="flex items-baseline gap-1 mt-2 border-b border-white/5 pb-3">
+                            <span className="text-2xl font-mono font-bold text-yellow-500">₹{mem.price}</span>
+                            <span className="text-zinc-500 text-[10px]">/{mem.period === 'monthly' ? 'month' : 'year'}</span>
+                          </div>
+                          
+                          <ul className="mt-4 space-y-2">
+                            {mem.benefits.map((b, i) => (
+                              <li key={i} className="text-[10px] text-zinc-400 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] shrink-0" />
+                                <span>{b}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <button 
+                          onClick={() => triggerToast(`VIP Subscribed: ${mem.title}! Details synced to sandbox wallet.`, 'success')}
+                          className={`w-full py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            mem.id === 'mem-2' 
+                              ? 'bg-theme-primary text-zinc-950 hover:bg-yellow-600' 
+                              : 'bg-zinc-900 border border-white/10 text-white hover:bg-zinc-800'
+                          }`}
+                        >
+                          Acquire VIP Access
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB CONTENT: AI STYLING LAB */}
+              {activeCustomerTab === 'ai-lab' && (
+                <AiStylingAssistant 
+                  walletBalance={profile?.walletBalance || 0}
+                  onAnalyzeComplete={(report) => triggerToast('AI Grooming report synthesized!', 'success')} 
+                />
+              )}
+
+            </div>
+
+            {/* RIGHT SIDEBAR: Map Pinpoint & Live Tracking Details */}
+            <div className="lg:col-span-4 space-y-6">
+              
+              {/* Geographic pinpoint mock map component */}
+              <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 space-y-4">
+                <h4 className="text-xs uppercase font-mono tracking-widest text-zinc-400 flex items-center gap-1.5">
+                  <Navigation className="w-4 h-4" /> GEOGRAPHIC RADAR COORDINATES
+                </h4>
+                
+                <div className="h-64 rounded-2xl overflow-hidden border border-white/5 relative bg-zinc-900">
+                  <MockMap 
+                    shops={filteredShops} 
+                    selectedShop={selectedShop}
+                    onSelectShop={setSelectedShop}
+                    activeHomeServiceBarber={activeTrackerLink}
+                    userCoordinates={userCoordinates}
+                    userAddress={userAddress}
+                    onMapClick={() => setIsMapModalOpen(true)}
+                  />
+                </div>
+                
+                <p className="text-[10px] text-zinc-500 leading-relaxed">
+                  Real-time radar displays coordinates for nearby styling enrolees. Hover flags to check distance calculations.
+                </p>
+              </div>
+
+              {/* Transit tracking status updates */}
+              {activeTrackerLink && (
+                <div className="bg-gradient-to-br from-yellow-500/10 to-black border border-yellow-500/30 rounded-3xl p-6 space-y-4 animate-pulse relative overflow-hidden">
+                  <div className="absolute top-[-50px] right-[-50px] w-32 h-32 bg-yellow-500/10 blur-xl pointer-events-none rounded-full" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-1.5">
+                    <Activity className="w-4 h-4" /> Live Courier Dispatch
+                  </h4>
+                  <div className="space-y-1.5 font-mono text-xs">
+                    <p className="text-white">Stylist: <span className="font-bold">{activeTrackerLink.name}</span></p>
+                    <p className="text-zinc-400">ETA waiting time: <span className="text-yellow-400 font-bold">{activeTrackerLink.eta} mins</span></p>
+                    <p className="text-zinc-500 text-[10px]">Status: {activeTrackerLink.status}</p>
+                  </div>
+                  
+                  <div className="w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-[#D4AF37] h-full w-2/3 rounded-full animate-progress" />
+                  </div>
+                </div>
+              )}
+
+              {/* Dynamic CMS Testimonials Section */}
+              {cmsData.homepage_sections?.show_testimonials && cmsData.testimonials?.length > 0 && (
+                <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 space-y-4">
+                  <h4 className="text-xs uppercase font-mono tracking-widest text-zinc-400">Customer Testimonials</h4>
+                  <div className="space-y-4">
+                    {cmsData.testimonials.map((t: any, i: number) => (
+                      <div key={i} className="space-y-2 border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                        <p className="text-xs text-zinc-300 italic">"{t.comment}"</p>
+                        <div className="flex items-center gap-2">
+                          <img src={t.avatar} alt={t.name} className="w-6 h-6 rounded-full object-cover grayscale" />
+                          <div>
+                            <p className="text-[10px] font-bold text-white">{t.name}</p>
+                            <p className="text-[8px] text-zinc-500">{t.role}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* FAQs accordion block */}
+              {cmsData.homepage_sections?.show_faqs && cmsData.faqs?.length > 0 && (
+                <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 space-y-4">
+                  <h4 className="text-xs uppercase font-mono tracking-widest text-zinc-400">FAQs</h4>
+                  <div className="space-y-3">
+                    {cmsData.faqs.map((faq: any, i: number) => (
+                      <details key={i} className="group border-b border-white/5 pb-2.5 last:border-0 cursor-pointer">
+                        <summary className="text-xs text-zinc-300 font-bold list-none flex justify-between items-center">
+                          {faq.question}
+                          <span className="text-yellow-500 font-bold transition group-open:rotate-45">+</span>
+                        </summary>
+                        <p className="text-[10px] text-zinc-500 mt-2 leading-relaxed">{faq.answer}</p>
+                      </details>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ==================== 2. SHOP OWNER DASHBOARD ==================== */}
+        {currentRole === 'owner' && (
+          <OwnerDashboard 
+            ownerShop={shops[0] || {
+              id: 'shop-1',
+              name: 'The Vintage Lounge',
+              image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=400',
+              banner: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=1200',
+              rating: 4.9,
+              reviewsCount: 142,
+              distance: 1.2,
+              address: '412 Gold Avenue, Downtown luxury block',
+              coordinates: { lat: 37.7833, lng: -122.4167 },
+              isVerified: true,
+              isFeatured: true,
+              workingHours: '09:00 AM - 09:00 PM',
+              features: ['Premium Espresso', 'A/C'],
+              categories: ['Haircut'],
+              services: [],
+              barbers: []
+            }} 
+            bookings={bookings} 
+            onAcceptBooking={handleAcceptRequest}
+            onRejectBooking={handleDeclineRequest}
+            onAddBarber={handleAddBarber}
+            onAddService={handleAddService}
+          />
+        )}
+
+        {/* ==================== 3. BARBER / STYLIST WORKSPACE ==================== */}
+        {currentRole === 'barber' && (
+          <StylistWorkspace 
+            barber={shops.flatMap(s => s.barbers).find(b => b.name === profile?.name) || {
+              id: 'barber-1',
+              name: profile?.name || 'Alexander Wright',
+              avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150',
+              rating: 4.9,
+              isAvailable: true,
+              specialty: 'Master Scissors & Traditional Shaves',
+              bio: 'Senior styling expert.'
+            }}
+            bookings={bookings}
+            onCompleteBooking={handleCompleteJob}
+          />
+        )}
+
+        {/* ==================== 4. MASTER ADMIN OPERATIONAL CONTROL ==================== */}
+        {currentRole === 'admin' && profile && (
+          <AdminConsole 
+            shops={shops}
+            bookings={bookings}
+            profile={profile}
+            cmsData={cmsData}
+            users={users}
+            coupons={coupons}
+            memberships={memberships}
+            onToggleShopVerify={handleToggleShopVerify}
+            onUpdateCms={handleUpdateCms}
+            onUpdateUserRole={handleUpdateUserRole}
+            onRefreshData={() => fetchAllData()}
+          />
+        )}
+
+      </main>
+
+      {/* Detail Rates Modal screen popover */}
+      {selectedShop && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-zinc-950 border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden relative shadow-2xl">
+            <div className="absolute top-[-100px] right-[-100px] w-64 h-64 bg-yellow-500/5 blur-[80px] pointer-events-none rounded-full" />
+            
+            <div className="p-6 border-b border-white/5 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-white">{selectedShop.name}</h3>
+                <p className="text-[10px] text-zinc-500 font-mono">📍 {selectedShop.address} &bull; {selectedShop.distance} km</p>
+              </div>
+              <button 
+                onClick={() => setSelectedShop(null)}
+                className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              <h4 className="text-xs uppercase font-mono tracking-widest text-zinc-400">Available Grooming Rates</h4>
+              <div className="space-y-2">
+                {selectedShop.services.map((srv) => (
+                  <div key={srv.id} className="p-3 bg-zinc-900 border border-white/5 rounded-xl flex justify-between items-center">
+                    <div>
+                      <h5 className="text-xs font-bold text-white">{srv.name}</h5>
+                      <p className="text-[10px] text-zinc-500 mt-0.5">{srv.description}</p>
+                      <p className="text-[9px] text-theme-primary font-mono mt-1">⏱️ {srv.duration} mins &bull; {srv.category}</p>
+                    </div>
+                    <div className="text-sm font-mono font-bold text-yellow-500 shrink-0">₹{srv.price}</div>
+                  </div>
+                ))}
+              </div>
+
+              <h4 className="text-xs uppercase font-mono tracking-widest text-zinc-400 pt-2">Stylist Team Roster</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {selectedShop.barbers.map((b) => (
+                  <div key={b.id} className="p-2.5 bg-zinc-900 border border-white/5 rounded-xl flex items-center gap-2.5">
+                    <img src={b.avatar} alt={b.name} className="w-8 h-8 rounded-full object-cover grayscale" />
+                    <div>
+                      <h5 className="text-[10px] font-bold text-white">{b.name}</h5>
+                      <p className="text-[9px] text-zinc-500">{b.specialty}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-white/5 bg-black/40 flex justify-end gap-2">
+              <button 
+                onClick={() => setSelectedShop(null)}
+                className="px-4 py-2 border border-white/10 hover:bg-zinc-800 text-zinc-400 rounded-xl text-xs"
+              >
+                Go Back
+              </button>
+              <button 
+                onClick={() => {
+                  setCheckoutShop(selectedShop);
+                }}
+                className="px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-zinc-950 font-bold rounded-xl text-xs hover:opacity-95"
+              >
+                Book Appointment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checkout Wizard popover modal trigger */}
+      {checkoutShop && (
+        <CheckoutWizard
+          shop={checkoutShop}
+          coupons={coupons}
+          walletBalance={profile?.walletBalance || 0}
+          onBookingSuccess={handleCheckoutSuccess}
+          onClose={() => setCheckoutShop(null)}
+          authToken={session?.access_token}
+        />
+      )}
+
+      {/* Fullscreen Map Modal */}
+      {isMapModalOpen && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 overflow-hidden">
+          <div className="w-full max-w-6xl h-[90vh] bg-zinc-950 border border-white/10 rounded-3xl flex flex-col overflow-hidden shadow-2xl relative">
+            
+            {/* Header */}
+            <div className="p-5 border-b border-white/5 bg-black/40 flex justify-between items-center shrink-0">
+              <div>
+                <h3 className="text-sm font-extrabold uppercase tracking-widest text-[#D4AF37] flex items-center gap-2">
+                  <Compass className="w-4 h-4 text-yellow-500 animate-spin" /> Interactive GPS Salon Radar
+                </h3>
+                <p className="text-[10px] text-zinc-500 mt-1">Search areas to locate StyleSlot partner shops. Click a pin or listing to select.</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsMapModalOpen(false);
+                  setMapSearchQuery('');
+                }}
+                className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white text-lg transition"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Search Bar HUD */}
+            <div className="p-4 bg-zinc-900/60 border-b border-white/5 flex flex-col sm:flex-row items-center gap-3 shrink-0">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <input
+                  type="text"
+                  value={mapSearchQuery}
+                  onChange={(e) => setMapSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleMapSearch();
+                  }}
+                  placeholder="Search city location (e.g. Downtown, Old Town, Creative District, Cyber Alley, Metro Center)..."
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-yellow-500/50"
+                />
+              </div>
+              <button
+                onClick={handleMapSearch}
+                className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-600 text-zinc-950 font-bold rounded-xl text-xs hover:opacity-95 transition cursor-pointer"
+              >
+                Search Location
+              </button>
+            </div>
+
+            {/* Main Area: Split Screen Map & Shop Sidebar */}
+            <div className="flex-1 flex flex-col md:flex-row min-h-0">
+              
+              {/* Map Viewport */}
+              <div className="flex-1 relative h-64 md:h-full min-h-0 bg-zinc-900 border-r border-white/5">
+                <MockMap 
+                  shops={filteredShops}
+                  selectedShop={selectedShop}
+                  onSelectShop={(shop) => {
+                    setSelectedShop(shop);
+                  }}
+                  userCoordinates={userCoordinates}
+                  userAddress={userAddress}
+                  activeHomeServiceBarber={activeTrackerLink}
+                />
+              </div>
+
+              {/* Sidebar: Shops matching the active search */}
+              <div className="w-full md:w-80 bg-zinc-950 overflow-y-auto p-4 space-y-3 shrink-0 min-h-0 flex flex-col border-t md:border-t-0 border-white/5">
+                <h4 className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Shops in this Area ({filteredShops.length})</h4>
+                <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-0">
+                  {filteredShops.length === 0 ? (
+                    <p className="text-xs text-zinc-600 italic text-center py-8">No shops match the selected radius filters.</p>
+                  ) : (
+                    filteredShops.map((shop) => {
+                      const isSel = selectedShop?.id === shop.id;
+                      return (
+                        <div 
+                          key={shop.id}
+                          onClick={() => setSelectedShop(shop)}
+                          className={`p-3 rounded-xl border transition-all cursor-pointer flex gap-3 ${
+                            isSel 
+                              ? 'bg-[#D4AF37]/10 border-[#D4AF37]' 
+                              : 'bg-zinc-900/60 border-white/5 hover:border-white/10'
+                          }`}
+                        >
+                          <img src={shop.image} alt={shop.name} className="w-12 h-12 rounded-lg object-cover grayscale" />
+                          <div className="space-y-0.5">
+                            <h5 className="text-xs font-bold text-white flex items-center gap-1">
+                              {shop.name}
+                              {shop.isVerified && <span className="text-[9px] text-blue-400">✔️</span>}
+                            </h5>
+                            <p className="text-[9px] text-zinc-400 leading-tight truncate max-w-[170px]">{shop.address}</p>
+                            <div className="flex items-center gap-2 text-[9px] font-mono">
+                              <span className="text-yellow-400">★ {shop.rating}</span>
+                              <span className="text-zinc-500">({shop.reviewsCount} reviews)</span>
+                              <span className="text-theme-primary font-bold">📍 {shop.distance} km</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {selectedShop && (
+                  <div className="border-t border-white/5 pt-3 mt-1 shrink-0 space-y-2">
+                    <div className="text-xs font-bold text-white flex justify-between items-center">
+                      <span>Selected: {selectedShop.name}</span>
+                      <span className="text-theme-primary font-mono text-[10px]">{selectedShop.distance} km away</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsMapModalOpen(false);
+                        const exploreSection = document.getElementById('explore-catalog-grid');
+                        if (exploreSection) {
+                          exploreSection.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }}
+                      className="w-full bg-theme-primary text-zinc-950 font-bold py-2 rounded-xl text-xs hover:opacity-95 transition cursor-pointer"
+                    >
+                      Focus this Salon in Catalog
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-white/5 bg-black/40 flex justify-end shrink-0">
+              <button 
+                onClick={() => {
+                  setIsMapModalOpen(false);
+                  setMapSearchQuery('');
+                }}
+                className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Close Map
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Standard Footer layout bar */}
+      <footer className="w-full bg-[#050505] border-t border-white/5 py-8 text-center text-zinc-600 text-[11px] relative z-10">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="text-left space-y-1">
+            <h5 className="font-bold text-zinc-300 text-xs tracking-wider">{cmsData.theme_settings?.business_name} Network</h5>
+            <p className="text-[10px] text-zinc-500">Developed by Poojith Sai &bull; Powered by Supabase & Gemini AI</p>
+          </div>
+          <div className="text-center md:text-right space-y-1 font-mono text-[10px] text-zinc-500">
+            <p>Concierge: {cmsData.contact_details?.phone} &bull; {cmsData.contact_details?.email}</p>
+            <p>{cmsData.contact_details?.address}</p>
+          </div>
+        </div>
+        <div className="pt-6 border-t border-white/5 mt-6 flex justify-between items-center max-w-7xl mx-auto px-4">
+          <p>&copy; {new Date().getFullYear()} {cmsData.theme_settings?.business_name}. All rights reserved.</p>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white rounded-lg transition"
+          >
+            <LogOut className="w-3.5 h-3.5" /> Sign Out
+          </button>
+        </div>
+      </footer>
+
+    </div>
+  );
+}
