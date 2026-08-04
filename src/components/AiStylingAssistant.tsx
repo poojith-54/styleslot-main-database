@@ -370,12 +370,12 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
   const handleRunAiAnalysis = async () => {
     // Run Validation
     const errors = [];
-    if (!capturedImage) errors.push("Please upload or capture a profile image.");
-    if (!faceShape) errors.push("Please select a Face Shape symmetry profile.");
-    if (!hairDensity) errors.push("Please select a Hair Density parameter.");
-    if (!hairLength) errors.push("Please select a Hair Length category.");
-    if (!hasBeard) errors.push("Please specify whether to include Beard Contouring.");
-    if (!customText.trim()) errors.push("Please enter your Custom Aesthetic Goals.");
+    if (!capturedImage) errors.push("Please upload your image.");
+    if (!faceShape) errors.push("Please select Face Shape.");
+    if (!hairDensity) errors.push("Please select Hair Density.");
+    if (!hairLength) errors.push("Please choose Hair Length.");
+    if (!hasBeard) errors.push("Please select Beard Contouring.");
+    if (!customText.trim()) errors.push("Please enter your desired hairstyle.");
 
     if (errors.length > 0) {
       setValidationErrors(errors);
@@ -389,19 +389,23 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
     setSelectedImage(null);
 
     try {
-      setLoadingStep("Uploading image securely...");
+      setLoadingStep("Uploading...");
       if (cancelRequested) return;
       const uploadedUrl = await uploadToSupabase(capturedImage!);
 
-      setLoadingStep("Detecting facial landmarks & boundary alignments...");
-      await new Promise(r => setTimeout(r, 800));
-      if (cancelRequested) return;
-
-      setLoadingStep("Optimizing prompt templates...");
+      setLoadingStep("Analyzing Face...");
       await new Promise(r => setTimeout(r, 600));
       if (cancelRequested) return;
 
-      setLoadingStep("Synthesizing 4 premium style options...");
+      setLoadingStep("Detecting Landmarks...");
+      await new Promise(r => setTimeout(r, 600));
+      if (cancelRequested) return;
+
+      setLoadingStep("Optimizing Prompt...");
+      await new Promise(r => setTimeout(r, 500));
+      if (cancelRequested) return;
+
+      setLoadingStep("Generating Hairstyles...");
       const response = await fetch('/api/ai/virtual-hairstylist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -419,6 +423,8 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
         throw new Error('Server responded with status: ' + response.status);
       }
 
+      setLoadingStep("Almost Done...");
+      await new Promise(r => setTimeout(r, 500));
       const data = await response.json();
       if (cancelRequested) return;
 
@@ -813,10 +819,23 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
                 </div>
               </div>
 
+              {/* Dynamic incomplete fields checklist */}
+              {(!capturedImage || !faceShape || !hairDensity || !hairLength || !hasBeard || !customText.trim()) && (
+                <div className="text-[10px] text-zinc-500 font-mono flex flex-wrap gap-x-3 gap-y-1 items-center bg-zinc-950/40 p-2.5 rounded-xl border border-white/5 justify-center">
+                  <span className="text-yellow-500/70 font-bold uppercase tracking-wider text-[8px] mr-1">Missing Inputs:</span>
+                  {!capturedImage ? <span className="text-zinc-600 font-sans">✕ Photo</span> : <span className="text-emerald-400 font-sans">✓ Photo</span>}
+                  {!faceShape ? <span className="text-zinc-600 font-sans">✕ Shape</span> : <span className="text-emerald-400 font-sans">✓ Shape</span>}
+                  {!hairDensity ? <span className="text-zinc-600 font-sans">✕ Density</span> : <span className="text-emerald-400 font-sans">✓ Density</span>}
+                  {!hairLength ? <span className="text-zinc-600 font-sans">✕ Length</span> : <span className="text-emerald-400 font-sans">✓ Length</span>}
+                  {!hasBeard ? <span className="text-zinc-600 font-sans">✕ Beard</span> : <span className="text-emerald-400 font-sans">✓ Beard</span>}
+                  {!customText.trim() ? <span className="text-zinc-600 font-sans">✕ Goal</span> : <span className="text-emerald-400 font-sans">✓ Goal</span>}
+                </div>
+              )}
+
               {/* Generate Button */}
               <button
                 onClick={handleRunAiAnalysis}
-                disabled={analyzing}
+                disabled={analyzing || !capturedImage || !faceShape || !hairDensity || !hairLength || !hasBeard || !customText.trim()}
                 className="w-full bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-200 text-zinc-950 font-bold py-3.5 px-4 rounded-xl text-xs hover:opacity-95 transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-yellow-500/5 disabled:opacity-40"
               >
                 {analyzing ? (
