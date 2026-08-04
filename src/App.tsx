@@ -55,9 +55,9 @@ export default function App() {
       image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=600'
     },
     contact_details: {
-      phone: '+91 22 555-SLOT',
-      email: 'concierge@styleslot.com',
-      address: '777 Luxury Towers, Bandra West, Mumbai, MH, India',
+      phone: 'Podalkur Arokya Milk',
+      email: 'contact@arokyamilk.com',
+      address: 'Andhra Pradesh, India',
       working_hours: 'Mon - Sun: 09:00 AM - 10:00 PM'
     },
     social_links: {
