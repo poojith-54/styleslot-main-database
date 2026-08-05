@@ -232,8 +232,6 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
         animId = requestAnimationFrame(drawScan);
       } else {
         setIsScanning(false);
-        // Completed scan animation -> trigger automatic API analysis call
-        handleRunAiAnalysis();
       }
     };
 
@@ -841,7 +839,7 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
 
                   {/* Generate Button */}
                   <button
-                    onClick={() => setIsScanning(true)}
+                    onClick={() => handleRunAiAnalysis()}
                     disabled={!capturedImage || !faceShape || !hairDensity || !hairLength || !hasBeard || !customRequest.trim()}
                     className="w-full py-4 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-30 disabled:hover:bg-yellow-400 text-zinc-950 font-black rounded-2xl text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 cursor-pointer shadow-xl shadow-yellow-500/10"
                   >
