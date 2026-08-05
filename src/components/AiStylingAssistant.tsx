@@ -11,6 +11,8 @@ interface AiStylingAssistantProps {
   walletBalance: number;
 }
 
+import { SVG_HAIRSTYLES, HAIR_COLORS } from '../utils/hairLibrary';
+
 // Hairstyle model images dictionary (Unsplash references)
 const MODEL_IMAGES: Record<string, string> = {
   "Modern Mullet": "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&q=80&w=400",
@@ -36,171 +38,6 @@ const MODEL_IMAGES: Record<string, string> = {
   "Classic Taper": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400"
 };
 
-// Premium SVG Try-On Hairstyle definitions
-const SVG_HAIRSTYLES: Record<string, {
-  back?: string;   // drawn behind face
-  top: string;     // main body
-  details: string; // textures / strands
-  fade?: string;   // overlay for fades
-  defaultScale: number;
-  defaultY: number;
-}> = {
-  "Modern Mullet": {
-    back: "M 80 180 Q 70 260 100 320 Q 120 320 130 280 Q 140 320 160 320 Q 200 270 190 180 Z",
-    top: "M 80 160 Q 70 80 120 70 Q 170 50 200 90 Q 210 130 200 160 Q 180 120 140 120 Q 100 120 80 160 Z",
-    details: "M 100 95 Q 125 80 150 95 M 120 110 Q 140 100 160 110 M 110 160 Q 130 180 150 160 M 110 220 Q 95 260 105 290 M 165 220 Q 180 260 170 290",
-    defaultScale: 1.15,
-    defaultY: -10
-  },
-  "Burst Fade Mullet": {
-    back: "M 85 190 Q 75 270 100 310 Q 125 310 130 285 Q 135 310 155 310 Q 185 270 180 190 Z",
-    top: "M 85 155 Q 75 85 125 75 Q 165 65 195 95 Q 205 130 195 155 Q 180 125 145 125 Q 110 125 85 155 Z",
-    details: "M 105 100 Q 125 85 145 100 M 125 115 Q 145 105 160 115 M 115 160 Q 130 175 145 160 M 120 220 Q 110 260 115 285",
-    fade: "M 70 160 Q 80 185 85 200 M 210 160 Q 200 185 195 200",
-    defaultScale: 1.1,
-    defaultY: -8
-  },
-  "Low Fade": {
-    top: "M 90 140 Q 80 80 130 70 Q 180 70 200 115 Q 210 140 200 140 Q 185 120 150 120 Q 115 120 90 140 Z",
-    details: "M 110 95 Q 135 85 160 95 M 125 110 Q 145 100 170 110",
-    fade: "M 75 145 L 85 200 L 95 210 M 215 145 L 205 200 L 195 210",
-    defaultScale: 1.1,
-    defaultY: -5
-  },
-  "Mid Fade": {
-    top: "M 92 135 Q 82 78 132 68 Q 182 68 200 112 Q 208 135 200 135 Q 185 118 150 118 Q 115 118 92 135 Z",
-    details: "M 112 92 Q 137 82 162 92 M 127 108 Q 147 98 172 108",
-    fade: "M 78 135 Q 90 175 92 205 M 212 135 Q 200 175 198 205",
-    defaultScale: 1.1,
-    defaultY: -5
-  },
-  "High Fade": {
-    top: "M 95 130 Q 85 75 135 65 Q 185 65 200 110 Q 205 130 200 130 Q 185 115 150 115 Q 115 115 95 130 Z",
-    details: "M 115 90 Q 140 80 165 90 M 130 105 Q 150 95 175 105",
-    fade: "M 80 125 Q 95 155 98 185 M 210 125 Q 195 155 192 185",
-    defaultScale: 1.1,
-    defaultY: -5
-  },
-  "French Crop": {
-    top: "M 90 145 C 80 90, 110 70, 150 70 C 190 70, 210 90, 200 145 Q 180 135 150 135 Q 110 135 90 145 Z",
-    details: "M 100 142 L 105 135 M 120 142 L 123 135 M 140 142 L 141 135 M 160 142 L 158 135 M 180 142 L 175 135 M 115 95 Q 145 85 175 95",
-    fade: "M 75 145 Q 85 185 90 200 M 215 145 Q 205 185 200 200",
-    defaultScale: 1.05,
-    defaultY: -8
-  },
-  "Crew Cut": {
-    top: "M 92 140 Q 85 95 135 85 Q 185 95 198 140 Q 180 130 150 130 Q 115 130 92 140 Z",
-    details: "M 110 105 L 115 98 M 130 102 L 132 95 M 150 102 L 148 95 M 170 105 L 165 98",
-    fade: "M 78 140 Q 88 175 92 195 M 212 140 Q 202 175 198 195",
-    defaultScale: 1.08,
-    defaultY: -6
-  },
-  "Buzz Cut": {
-    top: "M 95 142 C 90 110, 110 95, 145 95 C 180 95, 200 110, 195 142 C 180 138, 160 136, 145 136 C 130 136, 110 138, 95 142 Z",
-    details: "M 105 120 L 108 115 M 125 115 L 127 110 M 145 112 L 145 107 M 165 115 L 163 110 M 185 120 L 182 115",
-    defaultScale: 1.02,
-    defaultY: -5
-  },
-  "Wolf Cut": {
-    back: "M 75 180 Q 55 250 90 310 Q 115 320 120 280 Q 130 320 145 320 Q 185 300 190 280 Q 205 285 210 240 Q 215 190 205 180 Z",
-    top: "M 75 150 C 60 90, 100 60, 145 60 C 190 60, 230 90, 215 150 Q 185 130 145 130 Q 105 130 75 150 Z",
-    details: "M 95 140 Q 120 110 145 140 M 145 140 Q 170 110 195 140 M 115 90 Q 145 75 175 90 M 90 200 Q 75 240 85 270 M 200 200 Q 215 240 205 270",
-    defaultScale: 1.18,
-    defaultY: -12
-  },
-  "Messy Fringe": {
-    top: "M 85 145 C 75 90, 110 65, 150 65 C 190 65, 215 90, 205 145 C 180 155, 160 160, 145 145 C 130 130, 105 155, 85 145 Z",
-    details: "M 105 105 Q 125 90 145 105 M 130 120 Q 150 110 170 120 M 100 138 L 105 146 M 120 135 L 123 145 M 140 135 L 138 145 M 165 138 L 160 148",
-    defaultScale: 1.1,
-    defaultY: -8
-  },
-  "Side Part": {
-    top: "M 88 140 C 80 90, 110 70, 145 70 C 175 70, 210 85, 202 140 Q 185 130 145 132 Q 105 130 88 140 Z",
-    details: "M 130 72 L 130 130 M 105 95 Q 120 85 128 92 M 145 92 Q 170 80 185 98 M 110 110 Q 122 105 128 112 M 145 112 Q 170 102 185 118",
-    defaultScale: 1.08,
-    defaultY: -6
-  },
-  "Curtains": {
-    top: "M 85 145 C 75 90, 110 70, 145 70 C 180 70, 215 90, 205 145 C 190 120, 165 110, 147 122 C 145 125, 145 125, 143 122 C 125 110, 100 120, 85 145 Z",
-    details: "M 145 72 L 145 105 M 105 95 Q 125 85 138 105 M 185 95 Q 165 85 152 105 M 100 120 Q 120 112 130 125 M 190 120 Q 170 112 160 125",
-    defaultScale: 1.1,
-    defaultY: -8
-  },
-  "Pompadour": {
-    top: "M 85 135 C 70 80, 100 45, 145 45 C 190 45, 220 80, 205 135 Q 185 120 145 120 Q 105 120 85 135 Z",
-    details: "M 105 85 Q 145 65 185 85 M 115 102 Q 145 85 175 102 M 130 112 Q 145 100 160 112 M 145 48 C 135 60, 135 90, 145 120",
-    defaultScale: 1.12,
-    defaultY: -12
-  },
-  "Textured Quiff": {
-    top: "M 88 135 C 75 80, 110 55, 155 50 C 195 55, 215 90, 202 135 Q 182 122 147 122 Q 108 122 88 135 Z",
-    details: "M 108 85 L 128 65 M 128 92 L 148 72 M 148 95 L 168 75 M 168 102 L 188 82 M 120 115 Q 145 100 170 115",
-    fade: "M 78 135 Q 88 175 92 195 M 212 135 Q 202 175 198 195",
-    defaultScale: 1.1,
-    defaultY: -10
-  },
-  "Undercut": {
-    top: "M 90 130 C 80 80, 110 60, 145 60 C 180 60, 210 80, 200 130 Q 185 115 145 115 Q 105 115 90 130 Z",
-    details: "M 105 90 Q 145 75 185 90 M 115 105 Q 145 92 175 105 M 130 112 Q 145 102 160 112",
-    fade: "M 75 130 L 75 190 M 215 130 L 215 190",
-    defaultScale: 1.08,
-    defaultY: -7
-  },
-  "Drop Fade": {
-    top: "M 90 138 Q 80 80 130 70 Q 180 70 200 115 Q 210 138 200 138 Q 185 118 150 118 Q 115 118 90 138 Z",
-    details: "M 110 95 Q 135 85 160 95 M 125 110 Q 145 100 170 110",
-    fade: "M 75 142 C 78 170, 95 195, 105 210 M 215 142 C 212 170, 195 195, 185 210",
-    defaultScale: 1.1,
-    defaultY: -6
-  },
-  "Taper Fade": {
-    top: "M 90 140 Q 80 80 130 70 Q 180 70 200 115 Q 210 140 200 140 Q 185 120 150 120 Q 115 120 90 140 Z",
-    details: "M 110 95 Q 135 85 160 95 M 125 110 Q 145 100 170 110",
-    fade: "M 75 145 L 80 180 M 215 145 L 210 180 M 90 220 L 100 235 M 200 220 L 190 235",
-    defaultScale: 1.1,
-    defaultY: -5
-  },
-  "Curly Top": {
-    top: "M 85 135 C 70 80, 100 50, 145 50 C 190 50, 220 80, 205 135 Q 185 122 145 122 Q 105 122 85 135 Z",
-    details: "M 105 90 A 8 8 0 1 1 115 95 M 125 80 A 10 10 0 1 1 138 88 M 150 78 A 9 9 0 1 1 162 85 M 118 108 A 8 8 0 1 1 128 112 M 145 102 A 10 10 0 1 1 158 108 M 165 98 A 8 8 0 1 1 175 102 M 135 92 A 9 9 0 1 1 145 98 M 98 105 A 7 7 0 1 1 106 110 M 182 110 A 8 8 0 1 1 190 115",
-    fade: "M 78 135 Q 88 175 92 195 M 212 135 Q 202 175 198 195",
-    defaultScale: 1.12,
-    defaultY: -10
-  },
-  "Long Layers": {
-    back: "M 70 150 Q 40 250 60 360 Q 90 380 110 320 Q 120 380 145 360 Q 180 380 200 320 Q 220 250 190 150 Z",
-    top: "M 70 135 C 60 70, 110 50, 145 50 C 180 50, 230 70, 220 135 Q 185 120 145 120 Q 105 120 70 135 Z",
-    details: "M 90 110 Q 120 90 145 110 M 145 110 Q 170 90 200 110 M 90 160 Q 75 220 80 290 M 200 160 Q 215 220 210 290 M 70 240 Q 60 290 65 330 M 220 240 Q 230 290 225 330",
-    defaultScale: 1.2,
-    defaultY: -15
-  },
-  "Modern Slick Back": {
-    top: "M 90 132 C 82 85, 112 65, 145 65 C 178 65, 208 85, 200 132 Q 185 118 145 118 Q 105 118 90 132 Z",
-    details: "M 100 120 C 105 105, 125 92, 145 92 C 165 92, 185 105, 190 120 M 115 112 C 120 100, 135 90, 145 90 C 155 90, 170 100, 175 112 M 130 108 C 135 98, 140 92, 145 92 C 150 92, 155 98, 160 108 M 145 68 L 145 118",
-    defaultScale: 1.05,
-    defaultY: -6
-  },
-  "Classic Taper": {
-    top: "M 88 138 C 80 85, 110 68, 145 68 C 180 68, 210 85, 202 138 Q 185 122 145 124 Q 105 122 88 138 Z",
-    details: "M 105 92 Q 125 80 145 92 M 145 92 Q 165 80 185 92 M 115 108 Q 135 98 155 108 M 155 108 Q 170 98 180 108",
-    fade: "M 75 142 L 80 175 M 215 142 L 210 175",
-    defaultScale: 1.08,
-    defaultY: -6
-  }
-};
-
-// Premium Hair Color Palette
-const HAIR_COLORS = [
-  { name: 'Natural Black', value: '#111113', gradient: ['#050505', '#1a1a1c', '#2c2c2e'] },
-  { name: 'Espresso Brown', value: '#362211', gradient: ['#1c1006', '#3d2613', '#5a3d22'] },
-  { name: 'Golden Blonde', value: '#cca762', gradient: ['#92702c', '#cca762', '#ebd097'] },
-  { name: 'Platinum Grey', value: '#a8a8b0', gradient: ['#52525b', '#a8a8b0', '#f4f4f5'] },
-  { name: 'Auburn Red', value: '#7c1a22', gradient: ['#4c050b', '#88131b', '#b91c1c'] },
-  { name: 'Copper Gold', value: '#bd6515', gradient: ['#78350f', '#bd6515', '#fbbf24'] },
-  { name: 'Neon Blue', value: '#2563eb', gradient: ['#1e3a8a', '#2563eb', '#60a5fa'] },
-  { name: 'Emerald Green', value: '#059669', gradient: ['#064e3b', '#059669', '#34d399'] }
-];
-
 export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }: AiStylingAssistantProps) {
   // Navigation
   const [activeTab, setActiveTab] = useState<'scan' | 'consult'>('scan');
@@ -208,6 +45,13 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
   // Input states & analysis data
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [customRequest, setCustomRequest] = useState('');
+  
+  // Mandatory profiling fields
+  const [faceShape, setFaceShape] = useState<string>('');
+  const [hairDensity, setHairDensity] = useState<string>('');
+  const [hairLength, setHairLength] = useState<string>('');
+  const [hasBeard, setHasBeard] = useState<string>('');
+  const [previews, setPreviews] = useState<any[]>([]);
   
   const [analyzing, setAnalyzing] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
@@ -513,6 +357,10 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           image: capturedImage,
+          faceShape,
+          hairDensity,
+          hairLength,
+          hasBeard,
           customRequest: customVal !== undefined ? customVal : customRequest
         })
       });
@@ -530,10 +378,13 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
       setBestMatches(data.bestMatches || []);
       setGoodOptions(data.goodOptions || []);
       setLessRecommended(data.lessRecommended || []);
+      setPreviews(data.previews || []);
       setAnalysisSummary(data.analysisSummary || '');
 
       // Set default selected style
-      if (data.bestMatches && data.bestMatches.length > 0) {
+      if (data.previews && data.previews.length > 0) {
+        setSelectedHairstyle(data.previews[0].name);
+      } else if (data.bestMatches && data.bestMatches.length > 0) {
         setSelectedHairstyle(data.bestMatches[0].name);
       }
 
@@ -806,36 +657,199 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
 
           {/* Core Dashboard UI */}
           {!detectedFeatures && !isScanning && !analyzing && (
-            <div className="border border-white/5 rounded-3xl bg-zinc-950/40 p-12 text-center space-y-6 max-w-lg mx-auto">
-              <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 mx-auto">
-                <Upload className="w-7 h-7 text-yellow-500" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-md font-bold text-white">No analyzed portrait loaded</h3>
-                <p className="text-xs text-zinc-400">Capture from camera or browse folders to trigger instant automatic face scanning and style mapping.</p>
-              </div>
+            <div className="max-w-4xl mx-auto space-y-6">
               
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button
-                  onClick={startCamera}
-                  className="bg-zinc-800 border border-white/10 text-white hover:bg-zinc-700 text-xs font-semibold rounded-xl px-5 py-3 transition flex items-center justify-center gap-1.5"
-                >
-                  <Camera className="w-4 h-4 text-yellow-500" /> Start Camera
-                </button>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="bg-yellow-400 text-zinc-950 hover:bg-yellow-500 text-xs font-bold rounded-xl px-6 py-3 transition cursor-pointer"
-                >
-                  Browse Folders
-                </button>
+              {/* Photo Upload Area */}
+              <div className="border border-white/5 rounded-3xl bg-zinc-950/40 p-8 text-center space-y-4 max-w-lg mx-auto">
+                {capturedImage ? (
+                  <div className="relative w-40 h-40 mx-auto rounded-full overflow-hidden border-2 border-yellow-500/30 group">
+                    <img src={capturedImage} alt="Uploaded face" className="w-full h-full object-cover" />
+                    <button 
+                      onClick={() => setCapturedImage(null)}
+                      className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center text-red-400 font-bold text-xs transition-opacity"
+                    >
+                      Remove Photo
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 mx-auto">
+                    <Upload className="w-7 h-7 text-yellow-500" />
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <h3 className="text-md font-bold text-white">
+                    {capturedImage ? "Photo Uploaded" : "Step 1: Upload Your Portrait"}
+                  </h3>
+                  <p className="text-xs text-zinc-400">
+                    {capturedImage ? "Define your profile below to unlock recommendations." : "Capture from camera or browse files to load your face."}
+                  </p>
+                </div>
+                
+                {!capturedImage && (
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button
+                      onClick={startCamera}
+                      className="bg-zinc-800 border border-white/10 text-white hover:bg-zinc-700 text-xs font-semibold rounded-xl px-5 py-3 transition flex items-center justify-center gap-1.5"
+                    >
+                      <Camera className="w-4 h-4 text-yellow-500" /> Start Camera
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="bg-yellow-400 text-zinc-950 hover:bg-yellow-500 text-xs font-bold rounded-xl px-6 py-3 transition cursor-pointer"
+                    >
+                      Browse Folders
+                    </button>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept="image/*"
+                  className="hidden"
+                />
               </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                accept="image/*"
-                className="hidden"
-              />
+
+              {/* Mandatory Selections Form */}
+              {capturedImage && (
+                <div className="bg-zinc-950/60 border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider text-yellow-500 border-b border-white/5 pb-3">
+                    Step 2: Define Grooming Profile Parameters
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    {/* Face Shape */}
+                    <div className="space-y-3">
+                      <label className="text-xs font-bold text-zinc-300 block">Face Shape Selection *</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {['Oval', 'Square', 'Round', 'Heart', 'Diamond', 'Oblong'].map(shape => (
+                          <button
+                            key={shape}
+                            onClick={() => setFaceShape(shape)}
+                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+                              faceShape === shape 
+                                ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' 
+                                : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white'
+                            }`}
+                          >
+                            {shape}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Hair Density */}
+                    <div className="space-y-3">
+                      <label className="text-xs font-bold text-zinc-300 block">Hair Density *</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {['Low', 'Medium', 'High'].map(density => (
+                          <button
+                            key={density}
+                            onClick={() => setHairDensity(density)}
+                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+                              hairDensity === density 
+                                ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' 
+                                : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white'
+                            }`}
+                          >
+                            {density}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Hair Length */}
+                    <div className="space-y-3">
+                      <label className="text-xs font-bold text-zinc-300 block">Hair Length *</label>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {['Buzz', 'Very Short', 'Short', 'Medium', 'Long'].map(len => (
+                          <button
+                            key={len}
+                            onClick={() => setHairLength(len)}
+                            className={`py-2 px-1 text-[10px] font-bold rounded-xl border transition-all truncate text-center ${
+                              hairLength === len 
+                                ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' 
+                                : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white'
+                            }`}
+                          >
+                            {len}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Beard Contouring */}
+                    <div className="space-y-3">
+                      <label className="text-xs font-bold text-zinc-300 block">Beard Contouring *</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['Yes', 'No'].map(beard => (
+                          <button
+                            key={beard}
+                            onClick={() => setHasBeard(beard)}
+                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+                              hasBeard === beard 
+                                ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' 
+                                : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white'
+                            }`}
+                          >
+                            {beard === 'Yes' ? 'Beard Contouring' : 'Clean Shaven'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Custom Request / Aesthetic Goal */}
+                  <div className="space-y-3">
+                    <label className="text-xs font-bold text-zinc-300 block">Custom Aesthetic Goal / User Prompt *</label>
+                    <textarea
+                      value={customRequest}
+                      onChange={(e) => setCustomRequest(e.target.value)}
+                      placeholder="Explain your desired hairstyle profile, e.g., 'I want a textured curtains haircut', 'A high fade mullet with red dye highlights', 'Keep it professional and clean'"
+                      rows={3}
+                      className="w-full bg-zinc-900 border border-white/5 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-yellow-500/50 placeholder:text-zinc-500"
+                    />
+                  </div>
+
+                  {/* Validation feedback checklist */}
+                  <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 space-y-2">
+                    <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block font-bold">Mandatory Verification Checklist:</span>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${capturedImage ? 'text-green-400' : 'text-red-400'}`}>
+                        <span>{capturedImage ? '✓' : '✗'}</span> Image Uploaded
+                      </div>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${faceShape ? 'text-green-400' : 'text-red-400'}`}>
+                        <span>{faceShape ? '✓' : '✗'}</span> Face Shape Selected
+                      </div>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${hairDensity ? 'text-green-400' : 'text-red-400'}`}>
+                        <span>{hairDensity ? '✓' : '✗'}</span> Hair Density Selected
+                      </div>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${hairLength ? 'text-green-400' : 'text-red-400'}`}>
+                        <span>{hairLength ? '✓' : '✗'}</span> Hair Length Selected
+                      </div>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${hasBeard ? 'text-green-400' : 'text-red-400'}`}>
+                        <span>{hasBeard ? '✓' : '✗'}</span> Beard Contouring Selected
+                      </div>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${customRequest.trim() ? 'text-green-400' : 'text-red-400'}`}>
+                        <span>{customRequest.trim() ? '✓' : '✗'}</span> Aesthetic Goal Entered
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Generate Button */}
+                  <button
+                    onClick={() => setIsScanning(true)}
+                    disabled={!capturedImage || !faceShape || !hairDensity || !hairLength || !hasBeard || !customRequest.trim()}
+                    className="w-full py-4 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-30 disabled:hover:bg-yellow-400 text-zinc-950 font-black rounded-2xl text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 cursor-pointer shadow-xl shadow-yellow-500/10"
+                  >
+                    <Sparkles className="w-4 h-4 text-zinc-950" /> Generate AI Grooming Recommendations
+                  </button>
+
+                </div>
+              )}
             </div>
           )}
 
@@ -1055,7 +1069,15 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
                         }`}
                       >
                         <div className="w-24 shrink-0">
-                          <FacePreviewCard styleName={style.name} sizeClass="h-24" />
+                          {previews.find(p => p.name === style.name) ? (
+                            <img 
+                              src={previews.find(p => p.name === style.name).image} 
+                              alt={style.name} 
+                              className="w-full h-24 object-cover rounded-xl border border-white/5 bg-zinc-900" 
+                            />
+                          ) : (
+                            <FacePreviewCard styleName={style.name} sizeClass="h-24" />
+                          )}
                         </div>
                         <div className="flex-1 space-y-1.5 min-w-0">
                           <div className="flex items-center justify-between">
@@ -1164,7 +1186,15 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
                           : 'bg-zinc-950/80 border-white/5 hover:border-white/10'
                       }`}
                     >
-                      <FacePreviewCard styleName={style.name} sizeClass="h-28" />
+                      {previews.find(p => p.name === style.name) ? (
+                        <img 
+                          src={previews.find(p => p.name === style.name).image} 
+                          alt={style.name} 
+                          className="w-full h-28 object-cover rounded-xl border border-white/5 bg-zinc-900" 
+                        />
+                      ) : (
+                        <FacePreviewCard styleName={style.name} sizeClass="h-28" />
+                      )}
                       <div className="space-y-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
                           <h5 className="text-[11px] font-bold text-white truncate">{style.name}</h5>
@@ -1229,28 +1259,33 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                  {Object.keys(SVG_HAIRSTYLES).map((styleName) => (
+                  {previews.map((preview) => (
                     <div 
-                      key={styleName}
-                      onClick={() => setSelectedHairstyle(styleName)}
+                      key={preview.name}
+                      onClick={() => setSelectedHairstyle(preview.name)}
                       className={`group relative rounded-2xl overflow-hidden border transition-all cursor-pointer flex flex-col justify-between ${
-                        selectedHairstyle === styleName 
+                        selectedHairstyle === preview.name 
                           ? 'border-yellow-500 bg-zinc-950 scale-95' 
                           : 'border-white/5 bg-zinc-950/80 hover:border-white/10'
                       }`}
                     >
-                      {/* Interactive visual on user face */}
-                      <FacePreviewCard styleName={styleName} sizeClass="h-32" />
+                      {/* AI Generated Styled Photo Preview */}
+                      <div className="relative w-full h-32 rounded-xl overflow-hidden bg-zinc-950 border border-white/5">
+                        <img src={preview.image} alt={preview.name} className="w-full h-full object-cover" />
+                        <div className="absolute top-2 right-2 bg-yellow-500/90 text-zinc-950 px-2 py-0.5 rounded text-[8px] font-bold">
+                          {preview.compatibility}% Match
+                        </div>
+                      </div>
                       
                       <div className="p-3 bg-zinc-950">
-                        <h6 className="text-[10px] font-bold text-zinc-200 truncate group-hover:text-yellow-400 transition">{styleName}</h6>
+                        <h6 className="text-[10px] font-bold text-zinc-200 truncate group-hover:text-yellow-400 transition">{preview.name}</h6>
                         
                         {/* Mini control icons */}
                         <div className="flex items-center justify-between gap-1.5 mt-2 border-t border-white/5 pt-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedHairstyle(styleName);
+                              setSelectedHairstyle(preview.name);
                               handleDownloadTryOn();
                             }}
                             className="text-zinc-500 hover:text-yellow-400 transition"
@@ -1261,28 +1296,28 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedHairstyle(styleName);
-                              setFullscreenImage(MODEL_IMAGES[styleName] || null);
+                              setSelectedHairstyle(preview.name);
+                              setFullscreenImage(preview.image);
                             }}
                             className="text-zinc-500 hover:text-yellow-400 transition"
-                            title="Show reference photo"
+                            title="Show fullscreen preview"
                           >
                             <Maximize2 className="w-3 h-3" />
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              toggleFavorite(styleName);
+                              toggleFavorite(preview.name);
                             }}
                             className="text-zinc-500 hover:text-yellow-400 transition"
                             title="Favorite"
                           >
-                            <Heart className={`w-3 h-3 ${favorites.includes(styleName) ? 'fill-red-500 text-red-500' : ''}`} />
+                            <Heart className={`w-3 h-3 ${favorites.includes(preview.name) ? 'fill-red-500 text-red-500' : ''}`} />
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedHairstyle(styleName);
+                              setSelectedHairstyle(preview.name);
                               handleShare();
                             }}
                             className="text-zinc-500 hover:text-yellow-400 transition"
@@ -1293,10 +1328,11 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleRunAiAnalysis(styleName);
+                              setSelectedHairstyle(preview.name);
+                              handleRunAiAnalysis(preview.name);
                             }}
                             className="text-zinc-500 hover:text-yellow-400 transition text-[8px] font-bold tracking-widest shrink-0 uppercase"
-                            title="Generate similar hairstyles based on this pattern"
+                            title="Sync AI Variations"
                           >
                             Sync AI
                           </button>
@@ -1327,8 +1363,11 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
                       setBestMatches(item.data.bestMatches || []);
                       setGoodOptions(item.data.goodOptions || []);
                       setLessRecommended(item.data.lessRecommended || []);
+                      setPreviews(item.data.previews || []);
                       setAnalysisSummary(item.data.analysisSummary || '');
-                      if (item.data.bestMatches && item.data.bestMatches.length > 0) {
+                      if (item.data.previews && item.data.previews.length > 0) {
+                        setSelectedHairstyle(item.data.previews[0].name);
+                      } else if (item.data.bestMatches && item.data.bestMatches.length > 0) {
                         setSelectedHairstyle(item.data.bestMatches[0].name);
                       }
                     }}

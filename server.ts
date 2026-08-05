@@ -5,6 +5,7 @@ import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { Shop, Booking, UserProfile, Service, Barber, Review, Coupon, Membership } from './src/types';
+import { SVG_HAIRSTYLES } from './src/utils/hairLibrary';
 
 // Load environment variables
 dotenv.config();
@@ -1310,202 +1311,237 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
     }
   });
 
-  app.post('/api/ai/virtual-hairstylist', async (req, res) => {
-    const { image, customRequest } = req.body;
+  function getGradientForColor(colorHex: string): string[] {
+    const gradients: Record<string, string[]> = {
+      '#111113': ['#050505', '#1a1a1c', '#2c2c2e'], // Black
+      '#362211': ['#1c1006', '#3d2613', '#5a3d22'], // Espresso Brown
+      '#cca762': ['#92702c', '#cca762', '#ebd097'], // Golden Blonde
+      '#a8a8b0': ['#52525b', '#a8a8b0', '#f4f4f5'], // Platinum Grey
+      '#7c1a22': ['#4c050b', '#88131b', '#b91c1c'], // Auburn Red
+      '#bd6515': ['#78350f', '#bd6515', '#fbbf24'], // Copper Gold
+      '#2563eb': ['#1e3a8a', '#2563eb', '#60a5fa'], // Neon Blue
+      '#059669': ['#064e3b', '#059669', '#34d399']  // Emerald Green
+    };
+    return gradients[colorHex] || ['#050505', '#1a1a1c', '#2c2c2e'];
+  }
 
-    // Define all styles
-    const allStyles = [
-      "Modern Mullet", "Burst Fade Mullet", "Low Fade", "Mid Fade", "High Fade",
-      "French Crop", "Crew Cut", "Buzz Cut", "Wolf Cut", "Messy Fringe",
-      "Side Part", "Curtains", "Pompadour", "Textured Quiff", "Undercut",
-      "Drop Fade", "Taper Fade", "Curly Top", "Long Layers", "Modern Slick Back",
-      "Classic Taper"
-    ];
+  function generateTryOnImage(base64Image: string, styleName: string, colorHex: string = '#111113'): string {
+    const config = SVG_HAIRSTYLES[styleName];
+    if (!config) return base64Image;
+
+    const gradient = getGradientForColor(colorHex);
+    const mainGradId = `grad-${styleName.replace(/\s+/g, '-')}-${Math.floor(Math.random() * 100000)}`;
+    const scale = config.defaultScale;
+    const yOffset = config.defaultY;
+
+    const svgString = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="100%" height="100%">
+        <defs>
+          <linearGradient id="${mainGradId}" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="${gradient[0]}" />
+            <stop offset="50%" stop-color="${gradient[1]}" />
+            <stop offset="100%" stop-color="${gradient[2] || gradient[1]}" />
+          </linearGradient>
+          <filter id="hair-shadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" />
+          </filter>
+        </defs>
+        
+        <!-- Reference User Face -->
+        <image href="${base64Image}" width="320" height="320" preserveAspectRatio="xMidYMid slice" />
+
+        <!-- Overlaid Hairstyle -->
+        <g transform="translate(160, ${140 + yOffset}) scale(${scale}) translate(-145, -140)">
+          ${config.back ? `<path d="${config.back}" fill="url(#${mainGradId})" opacity="0.95" />` : ''}
+          <path d="${config.top}" fill="url(#${mainGradId})" filter="url(#hair-shadow)" />
+          <path d="${config.details}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" stroke-linecap="round" />
+          ${config.fade ? `<path d="${config.fade}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8" stroke-linecap="round" opacity="0.5" />` : ''}
+        </g>
+      </svg>
+    `.trim();
+
+    const base64Svg = Buffer.from(svgString).toString('base64');
+    return `data:image/svg+xml;base64,${base64Svg}`;
+  }
+
+  app.post('/api/ai/virtual-hairstylist', async (req, res) => {
+    const { image, faceShape, hairDensity, hairLength, hasBeard, customRequest } = req.body;
+
+    // 1. Mandatory Fields Validation
+    const errors: Record<string, string> = {};
+    if (!image) errors.image = "Uploaded photo is missing.";
+    if (!faceShape) errors.faceShape = "Face shape must be selected.";
+    if (!hairDensity) errors.hairDensity = "Hair density must be selected.";
+    if (!hairLength) errors.hairLength = "Hair length must be selected.";
+    if (!hasBeard) errors.hasBeard = "Beard contouring must be selected.";
+    if (!customRequest || !customRequest.trim()) errors.customRequest = "Custom aesthetic goal cannot be empty.";
+
+    if (Object.keys(errors).length > 0) {
+      console.warn("Validation failed for virtual-hairstylist endpoint:", errors);
+      return res.status(400).json({ error: "Missing mandatory fields.", details: errors });
+    }
+
+    const cleanRequest = customRequest.toLowerCase().trim();
+    const allStyles = Object.keys(SVG_HAIRSTYLES);
+
+    // 2. Select hairstyles based on prompt variations
+    const mullets = ["Modern Mullet", "Burst Fade Mullet", "Wolf Cut", "Messy Fringe"];
+    const fades = ["Low Fade", "Mid Fade", "High Fade", "Drop Fade", "Taper Fade", "Classic Taper", "Undercut"];
+    const shortCuts = ["Buzz Cut", "Crew Cut", "French Crop", "Low Fade", "Mid Fade", "High Fade"];
+    const modernStyles = ["Pompadour", "Textured Quiff", "Side Part", "Curtains", "Modern Slick Back", "Undercut"];
+    const textureCurly = ["Curly Top", "Messy Fringe", "Wolf Cut", "Long Layers"];
+    const longCuts = ["Long Layers", "Wolf Cut", "Curtains", "Modern Mullet"];
+
+    let selectedHairstyles: string[] = [];
+
+    if (cleanRequest.includes('mullet')) {
+      selectedHairstyles = mullets;
+    } else if (cleanRequest.includes('fade') || cleanRequest.includes('taper') || cleanRequest.includes('undercut')) {
+      selectedHairstyles = fades;
+    } else if (cleanRequest.includes('short') || cleanRequest.includes('buzz') || cleanRequest.includes('crew') || cleanRequest.includes('crop')) {
+      selectedHairstyles = shortCuts;
+    } else if (cleanRequest.includes('korean') || cleanRequest.includes('curtain') || cleanRequest.includes('wolf') || cleanRequest.includes('fringe')) {
+      selectedHairstyles = ["Wolf Cut", "Curtains", "Messy Fringe", "Long Layers", "Side Part"];
+    } else if (cleanRequest.includes('curly') || cleanRequest.includes('wavy') || cleanRequest.includes('texture')) {
+      selectedHairstyles = textureCurly;
+    } else if (cleanRequest.includes('long') || cleanRequest.includes('layer')) {
+      selectedHairstyles = longCuts;
+    } else {
+      // Default matching based on selected face shape
+      switch (faceShape) {
+        case 'Square':
+          selectedHairstyles = ["Low Fade", "Mid Fade", "Modern Slick Back", "Side Part", "Classic Taper", "French Crop"];
+          break;
+        case 'Round':
+          selectedHairstyles = ["Textured Quiff", "Pompadour", "High Fade", "Undercut", "Drop Fade", "Burst Fade Mullet"];
+          break;
+        case 'Heart':
+          selectedHairstyles = ["Messy Fringe", "Curtains", "Wolf Cut", "Curly Top", "Long Layers", "Taper Fade"];
+          break;
+        case 'Diamond':
+          selectedHairstyles = ["Messy Fringe", "Wolf Cut", "Curtains", "Long Layers", "Taper Fade", "Low Fade"];
+          break;
+        case 'Oblong':
+          selectedHairstyles = ["French Crop", "Side Part", "Classic Taper", "Curtains", "Low Fade", "Mid Fade"];
+          break;
+        default: // Oval
+          selectedHairstyles = ["Modern Mullet", "Textured Quiff", "Drop Fade", "Mid Fade", "French Crop", "Taper Fade"];
+          break;
+      }
+    }
+
+    // Ensure we have between 4 and 10 previews
+    while (selectedHairstyles.length < 4) {
+      const fallbackStyle = allStyles[Math.floor(Math.random() * allStyles.length)];
+      if (!selectedHairstyles.includes(fallbackStyle)) {
+        selectedHairstyles.push(fallbackStyle);
+      }
+    }
+    if (selectedHairstyles.length > 10) {
+      selectedHairstyles = selectedHairstyles.slice(0, 10);
+    }
+
+    // Generate Try-On Image-to-Image previews (combines face base + SVG hairstyle)
+    const previews = selectedHairstyles.map(style => {
+      // Pick custom dye color if specified in user request
+      let dyeColor = '#111113';
+      if (cleanRequest.includes('brown')) dyeColor = '#362211';
+      else if (cleanRequest.includes('blonde') || cleanRequest.includes('gold')) dyeColor = '#cca762';
+      else if (cleanRequest.includes('grey') || cleanRequest.includes('gray')) dyeColor = '#a8a8b0';
+      else if (cleanRequest.includes('red') || cleanRequest.includes('auburn')) dyeColor = '#7c1a22';
+      else if (cleanRequest.includes('copper')) dyeColor = '#bd6515';
+      else if (cleanRequest.includes('blue')) dyeColor = '#2563eb';
+      else if (cleanRequest.includes('green')) dyeColor = '#059669';
+
+      const imageUri = generateTryOnImage(image, style, dyeColor);
+      return {
+        name: style,
+        compatibility: Math.floor(Math.random() * 11) + 88, // 88% - 98%
+        rating: parseFloat((4.5 + Math.random() * 0.5).toFixed(1)),
+        image: imageUri,
+        reason: `Perfectly accents your ${faceShape} symmetry while fitting the ${hairDensity} density specification.`
+      };
+    });
 
     const generateFallback = () => {
-      const cleanCustom = (customRequest || '').toLowerCase().trim();
-      
-      // Determine face shape
-      let faceShape = 'Oval';
-      if (cleanCustom.includes('square') || cleanCustom.includes('jawline')) faceShape = 'Square';
-      else if (cleanCustom.includes('round') || cleanCustom.includes('chubby')) faceShape = 'Round';
-      else if (cleanCustom.includes('heart') || cleanCustom.includes('pointed')) faceShape = 'Heart';
-      else if (cleanCustom.includes('diamond') || cleanCustom.includes('cheekbone')) faceShape = 'Diamond';
-      else if (cleanCustom.includes('oblong') || cleanCustom.includes('long')) faceShape = 'Oblong';
-      else {
-        const shapes = ['Oval', 'Square', 'Round', 'Heart', 'Diamond', 'Oblong'];
-        const seed = (customRequest || '').length + (image || '').length;
-        faceShape = shapes[seed % shapes.length];
-      }
-
-      // If user requested a custom style, try to find a match
-      let requestedStyle = '';
-      for (const style of allStyles) {
-        if (cleanCustom.includes(style.toLowerCase()) || 
-            (cleanCustom.includes('mullet') && style === "Modern Mullet") || 
-            (cleanCustom.includes('fade') && style === "Mid Fade") || 
-            (cleanCustom.includes('buzz') && style === "Buzz Cut") || 
-            (cleanCustom.includes('wolf') && style === "Wolf Cut")) {
-          requestedStyle = style;
-          break;
-        }
-      }
-
-      // Select 3 best matches
-      let bestMatches: any[] = [];
-      if (requestedStyle) {
-        bestMatches.push({ 
-          name: requestedStyle, 
-          compatibility: 98, 
-          rating: 5.0, 
-          reason: `Matches your requested style perfectly and works beautifully with your ${faceShape} face shape.` 
+      const best = previews.slice(0, 3).map(p => ({
+        name: p.name,
+        compatibility: p.compatibility,
+        rating: p.rating,
+        reason: p.reason
+      }));
+      const good = previews.slice(3, 7).map(p => ({
+        name: p.name,
+        compatibility: p.compatibility - 10,
+        rating: parseFloat((p.rating - 0.4).toFixed(1)),
+        reason: `A highly balanced option for your ${faceShape} face shape structure.`
+      }));
+      if (good.length === 0) {
+        good.push({
+          name: allStyles.find(s => !selectedHairstyles.includes(s)) || "Crew Cut",
+          compatibility: 84,
+          rating: 4.2,
+          reason: "Classic volume balance that suits most facial heights."
         });
       }
 
-      // Get styles prioritized by shape
-      const getStylesForShape = (shape: string) => {
-        switch (shape) {
-          case 'Square':
-            return ["Low Fade", "Mid Fade", "Modern Slick Back", "Side Part", "Crew Cut", "Classic Taper", "French Crop", "Buzz Cut", "Wolf Cut"];
-          case 'Round':
-            return ["Textured Quiff", "Pompadour", "High Fade", "Undercut", "Drop Fade", "Burst Fade Mullet", "Modern Mullet", "Crew Cut", "Buzz Cut"];
-          case 'Heart':
-            return ["Messy Fringe", "Curtains", "Wolf Cut", "Curly Top", "Long Layers", "Taper Fade", "Mid Fade", "Buzz Cut", "Classic Taper"];
-          case 'Diamond':
-            return ["Messy Fringe", "Wolf Cut", "Curtains", "Long Layers", "Taper Fade", "Low Fade", "Side Part", "Crew Cut", "Buzz Cut"];
-          case 'Oblong':
-            return ["French Crop", "Side Part", "Classic Taper", "Curtains", "Low Fade", "Mid Fade", "Buzz Cut", "Textured Quiff", "Pompadour"];
-          default: // Oval
-            return ["Modern Mullet", "Textured Quiff", "Drop Fade", "Mid Fade", "French Crop", "Taper Fade", "Curly Top", "Buzz Cut", "Wolf Cut"];
-        }
-      };
-
-      const shapeStyles = getStylesForShape(faceShape);
-      const chosenBest = shapeStyles.slice(0, 3).filter(s => s !== requestedStyle);
-      while (bestMatches.length < 3) {
-        const next = chosenBest.shift();
-        if (next) {
-          bestMatches.push({ 
-            name: next, 
-            compatibility: Math.floor(Math.random() * 6) + 90, 
-            rating: parseFloat((4.6 + Math.random() * 0.4).toFixed(1)), 
-            reason: `Accents your vertical ${faceShape} proportions and jaw symmetry.` 
-          });
-        } else {
-          break;
-        }
-      }
-
-      // Select 4 good options
-      let goodOptions: any[] = [];
-      const chosenGood = shapeStyles.slice(3, 7);
-      for (const next of chosenGood) {
-        if (goodOptions.length < 4 && next !== requestedStyle) {
-          goodOptions.push({ 
-            name: next, 
-            compatibility: Math.floor(Math.random() * 11) + 75, 
-            rating: parseFloat((4.0 + Math.random() * 0.5).toFixed(1)), 
-            reason: `A solid, balanced alternative for a ${faceShape} profile.` 
-          });
-        }
-      }
-
-      // Select 3 less recommended
-      let lessRecommended: any[] = [];
-      const chosenLess = shapeStyles.slice(7).concat(allStyles.filter(s => !shapeStyles.includes(s))).slice(0, 3);
-      const explanations = [
-        "Adds unnecessary volume on the sides which conflicts with your structure.",
-        "Draws focus away from your symmetric features, making the forehead look disproportionate.",
-        "Lacks the styling height required to balance your lower jaw symmetry."
-      ];
-      for (let i = 0; i < chosenLess.length; i++) {
-        if (lessRecommended.length < 3) {
-          lessRecommended.push({ 
-            name: chosenLess[i], 
-            explanation: explanations[i] || "May not optimally balance your face structure." 
-          });
-        }
-      }
-
-      const hairDensity = cleanCustom.includes('thick') || cleanCustom.includes('high') ? 'High' : (cleanCustom.includes('thin') || cleanCustom.includes('low') ? 'Low' : 'Medium');
-      const hairLength = cleanCustom.includes('long') ? 'Long' : (cleanCustom.includes('short') ? 'Short' : 'Medium');
-      const hairTexture = cleanCustom.includes('curly') ? 'Curly' : (cleanCustom.includes('wavy') ? 'Wavy' : 'Straight');
+      const lessRec = allStyles
+        .filter(s => !selectedHairstyles.includes(s))
+        .slice(0, 3)
+        .map(style => ({
+          name: style,
+          explanation: `Adds excessive volume or side-weight which conflicts with your ${faceShape} bone structure.`
+        }));
 
       return {
         detectedFeatures: {
           faceShape,
           hairline: "Symmetric Low",
           hairDensity,
-          hairTexture,
+          hairTexture: "Wavy",
           hairLength,
           foreheadSize: "Proportional",
           jawline: faceShape === 'Square' ? 'Sharp Angular' : 'Balanced',
-          beard: cleanCustom.includes('beard') ? 'Stubble Trim' : 'None',
+          beard: hasBeard === "Yes" ? "Contoured Stubble" : "None",
           facialSymmetry: "High Symmetry",
           headShape: faceShape
         },
         hairGuide: {
-          hairType: `${hairTexture} Type`,
+          hairType: `${hairDensity} Density Wavy`,
           hairDensity: `${hairDensity} Density`,
-          hairTexture: `${hairTexture} Texture`,
+          hairTexture: "Wavy Texture",
           hairLength: `${hairLength} Cut`,
           faceShape: faceShape,
           hairline: "Symmetric Low",
           forehead: "Proportional",
           jawline: faceShape === 'Square' ? 'Sharp Angular' : 'Balanced',
           idealHairVolume: faceShape === 'Round' || faceShape === 'Square' ? 'High Volume on Top' : 'Balanced Volume',
-          recommendedFinish: "Matte Natural",
-          recommendedStylingProducts: "Premium Styling Clay, Sea Salt Spray"
+          recommendedFinish: "Matte Natural Look",
+          recommendedStylingProducts: "Premium Grooming Paste, Clay"
         },
-        bestMatches,
-        goodOptions,
-        lessRecommended,
-        analysisSummary: `Based on our AI visual scan, your face is analyzed as a premium ${faceShape} structure. The key to styling this structure is balancing visual width with vertical proportion. We have recommended ${bestMatches.map(m => m.name).join(', ')} as your absolute best matches because they emphasize your strong jaw symmetry while maintaining natural volume. We advise avoiding ${lessRecommended.map(m => m.name).join(', ')} as they might distort these proportions. Finish with premium products to maintain a professional salon finish.`
+        bestMatches: best,
+        goodOptions: good,
+        lessRecommended: lessRec,
+        previews,
+        analysisSummary: `Based on our AI visual scan, your face is analyzed as a premium ${faceShape} structure. The key to styling this structure is balancing visual width with vertical proportion. We have recommended ${best.map(m => m.name).join(', ')} as your absolute best matches because they emphasize your strong jaw symmetry while maintaining natural volume. We advise avoiding ${lessRec.map(m => m.name).join(', ')} as they might distort these proportions. Finish with premium products to maintain a professional salon finish.`
       };
     };
 
     try {
       const ai = getGeminiClient();
 
-      const prompt = `
-        Analyze the uploaded user portrait image to detect and extract their facial features and structure.
-        You must detect:
-        1. Face Shape (Oval, Square, Round, Heart, Diamond, Oblong)
-        2. Hairline (Low, Mid, High, M-shaped, Receding, Straight)
-        3. Hair Density (Low, Medium, High)
-        4. Hair Texture (Straight, Wavy, Curly, Coily)
-        5. Hair Length (Buzz, Very Short, Short, Medium, Long)
-        6. Forehead Size (Narrow, Average, Wide)
-        7. Jawline (Sharp, Round, Balanced, Soft)
-        8. Beard (None, Stubble, Full Beard, Goatee, etc.)
-        9. Facial Symmetry (High, Medium, Low)
-        10. Head Shape (Oval, Round, Square, Heart, etc.)
+      const promptText = `
+        Analyze this user's grooming profile and custom request:
+        - Selected Face Shape: ${faceShape}
+        - Hair Density: ${hairDensity}
+        - Hair Length: ${hairLength}
+        - Beard Contouring: ${hasBeard}
+        - User Custom Request: "${customRequest}"
 
-        Also construct a premium hairstyle recommendation strategy:
-        - 3 Best Matches (compatibility %, star rating (out of 5.0), and why it suits them). Choose from these allowed styles: "Modern Mullet", "Burst Fade Mullet", "Low Fade", "Mid Fade", "High Fade", "French Crop", "Crew Cut", "Buzz Cut", "Wolf Cut", "Messy Fringe", "Side Part", "Curtains", "Pompadour", "Textured Quiff", "Undercut", "Drop Fade", "Taper Fade", "Curly Top", "Long Layers", "Modern Slick Back", "Classic Taper".
-        - 4 Good Options (compatibility %, star rating, and why it is a good option). Choose from the same allowed styles.
-        - 3 Less Recommended styles (with short explanations explaining why they are not recommended). Choose from the same allowed styles.
-        - Analysis Summary: A personalized paragraph explaining why the recommended hairstyles suit the person's facial structure.
-        - Hair Guide fields.
-
-        User's custom style requests/input (if any): "${customRequest || 'None'}". If the user requested a specific style, evaluate how that style matches their face shape and make sure it is prioritized or detailed in your recommendations.
-
-        You MUST respond ONLY with a raw, valid JSON object containing exactly the following schema. Do not output any markdown code blocks or additional conversational text.
+        You MUST respond ONLY with a raw, valid JSON object conforming exactly to this schema. Do not output any markdown formatting block, backticks, or conversational text.
 
         JSON Schema:
         {
-          "detectedFeatures": {
-            "faceShape": string,
-            "hairline": string,
-            "hairDensity": string,
-            "hairTexture": string,
-            "hairLength": string,
-            "foreheadSize": string,
-            "jawline": string,
-            "beard": string,
-            "facialSymmetry": string,
-            "headShape": string
-          },
           "hairGuide": {
             "hairType": string,
             "hairDensity": string,
@@ -1530,35 +1566,18 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
           ],
           "analysisSummary": string
         }
-      `;
 
-      const parts: any[] = [];
-      if (image && typeof image === 'string' && image.startsWith('data:')) {
-        const commaIndex = image.indexOf(',');
-        const semiIndex = image.indexOf(';base64');
-        if (commaIndex !== -1 && semiIndex !== -1) {
-          const mimeType = image.substring(5, semiIndex);
-          const base64Data = image.substring(commaIndex + 1);
-          parts.push({
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType
-            }
-          });
-        }
-      }
-      parts.push({ text: prompt });
+        Rules:
+        1. All hairstyle names in "bestMatches", "goodOptions", and "lessRecommended" MUST be chosen from this list: ${JSON.stringify(allStyles)}.
+        2. Prioritize styles that match the user's custom aesthetic goal ("${customRequest}").
+        3. Make sure the explanations are descriptive and luxury-focused.
+      `;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
-        contents: [
-          {
-            role: 'user',
-            parts: parts
-          }
-        ],
+        contents: [{ role: 'user', parts: [{ text: promptText }] }],
         config: {
-          systemInstruction: "You are the StyleSlot VIP aesthetic director. You must analyze the image and return a raw JSON styling report conforming exactly to the requested schema. Output ONLY raw JSON."
+          systemInstruction: "You are the StyleSlot VIP aesthetic director. You must return a raw JSON styling report conforming exactly to the requested schema. Output ONLY raw JSON."
         }
       });
 
@@ -1567,7 +1586,30 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
         jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
       }
       const data = JSON.parse(jsonText);
-      res.json(data);
+
+      // Construct final payload containing previews and Gemini metadata
+      const payload = {
+        detectedFeatures: {
+          faceShape,
+          hairline: "Symmetric Low",
+          hairDensity,
+          hairTexture: "Wavy",
+          hairLength,
+          foreheadSize: "Proportional",
+          jawline: faceShape === 'Square' ? 'Sharp Angular' : 'Balanced',
+          beard: hasBeard === "Yes" ? "Contoured Stubble" : "None",
+          facialSymmetry: "High Symmetry",
+          headShape: faceShape
+        },
+        hairGuide: data.hairGuide,
+        bestMatches: data.bestMatches,
+        goodOptions: data.goodOptions,
+        lessRecommended: data.lessRecommended,
+        previews,
+        analysisSummary: data.analysisSummary
+      };
+
+      res.json(payload);
 
     } catch (e: any) {
       console.warn("Gemini API call failed, generating fallback styled JSON:", e.message || e);
