@@ -1,4 +1,4 @@
-import { createApp } from '../server';
+import { createApp } from '../dist/server.cjs';
 
 let appPromise: any = null;
 
