@@ -2,6 +2,12 @@ import { createApp } from '../server';
 
 let appPromise: any = null;
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 export default async function handler(req: any, res: any) {
   // CORS Headers support
   res.setHeader('Access-Control-Allow-Origin', '*');
