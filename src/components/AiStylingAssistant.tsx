@@ -878,174 +878,35 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
               {/* Row 1: Left original and interactive try-on Arena / Right Best Matches */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
-                {/* LEFT COLUMN: Interactive Try-On Arena */}
+                {/* LEFT COLUMN: Flat AI Try-On Arena */}
                 <div className="lg:col-span-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase">Try-On Arena (Active Image)</span>
                     <button
-                      onClick={() => setCapturedImage(null)}
-                      className="text-[10px] text-red-400 hover:text-red-300 font-mono flex items-center gap-1"
+                      onClick={handleRefreshScanner}
+                      className="text-[11px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-lg"
                     >
-                      <Trash2 className="w-3 h-3" /> Clear Image
+                      <span>🔄</span> Refresh Scanner
                     </button>
                   </div>
 
-                  {/* Interactive container */}
-                  <div 
-                    ref={containerRef}
-                    className="relative w-full h-[400px] rounded-3xl overflow-hidden border border-white/10 bg-zinc-950 select-none cursor-crosshair"
-                  >
-                    {/* Before Image */}
+                  {/* Flat composited image container */}
+                  <div className="relative w-full h-[400px] rounded-3xl overflow-hidden border border-white/10 bg-zinc-950">
                     <img 
-                      src={capturedImage!} 
-                      alt="Before" 
-                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                      src={previews.find(p => p.name === selectedHairstyle)?.image || capturedImage!} 
+                      alt="AI Try-On Result" 
+                      className="absolute inset-0 w-full h-full object-cover"
                     />
-
-                    {/* After tryon overlaid image */}
-                    <div 
-                      className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none"
-                      style={{ width: `${sliderPos}%` }}
-                    >
-                      {/* Face base */}
-                      <img 
-                        src={capturedImage!} 
-                        alt="Tryon Base" 
-                        className="absolute inset-0 w-full h-[400px] object-cover pointer-events-none max-w-none"
-                        style={{ width: containerRef.current?.getBoundingClientRect().width || 400 }}
-                      />
-
-                      {/* Overlaid Hair SVG overlay */}
-                      <div className="absolute inset-0 pointer-events-none">
-                        <svg 
-                          id="tryon-svg-overlay"
-                          viewBox="0 0 320 320" 
-                          className="w-full h-full"
-                        >
-                          <g transform={`translate(${160 + tryOnX}, ${140 + tryOnY}) scale(${tryOnScale}) translate(-145, -140)`}>
-                            <HairstyleSvgContent styleName={selectedHairstyle} colorGrad={activeColor.gradient} />
-                          </g>
-                        </svg>
-                      </div>
-                    </div>
 
                     {/* Custom try-on label overlay */}
                     <div className="absolute top-4 left-4 bg-black/75 backdrop-blur px-3 py-1 rounded-full text-[9px] font-mono text-zinc-400 border border-white/5">
-                      Original Upload
+                      AI Generated Try-On
                     </div>
 
                     <div className="absolute top-4 right-4 bg-yellow-500/90 text-zinc-950 font-bold px-3 py-1 rounded-full text-[9px] font-mono uppercase tracking-wider border border-yellow-400/20 shadow-lg">
                       {selectedHairstyle}
                     </div>
-
-                    {/* Slider separator bar */}
-                    <div 
-                      className="absolute top-0 bottom-0 w-0.5 bg-yellow-400 shadow-[0_0_12px_#fbbf24] cursor-ew-resize"
-                      style={{ left: `${sliderPos}%` }}
-                      onMouseDown={() => setIsDragSlider(true)}
-                    >
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-yellow-400 text-zinc-950 border border-zinc-900 flex items-center justify-center shadow-2xl">
-                        <ArrowLeftRight className="w-3.5 h-3.5" />
-                      </div>
-                    </div>
-
-                    {/* Invisible drag overlay for mouse track */}
-                    {isDragSlider && (
-                      <div 
-                        className="absolute inset-0 z-40 bg-transparent"
-                        onMouseMove={(e) => handleSliderMove(e.clientX)}
-                        onMouseUp={() => setIsDragSlider(false)}
-                        onMouseLeave={() => setIsDragSlider(false)}
-                      />
-                    )}
                   </div>
-
-                  {/* Slider Helper */}
-                  <div className="flex items-center gap-2 px-1 text-[11px] text-zinc-500 font-mono">
-                    <ArrowLeftRight className="w-3.5 h-3.5 text-zinc-400 animate-pulse" />
-                    <span>Swipe slider or use control panel below to fit hair</span>
-                  </div>
-
-                  {/* Fitting & Styling Tuning Controls */}
-                  <div className="border border-white/5 bg-zinc-950/80 rounded-2xl p-4 space-y-4">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                      <span className="text-xs font-bold text-white flex items-center gap-1">
-                        <Sliders className="w-3.5 h-3.5 text-yellow-500" /> Hairstyle Adjustments
-                      </span>
-                      <span className="text-[9px] text-zinc-500 font-mono uppercase">Fine Fitting</span>
-                    </div>
-
-                    <div className="space-y-3 text-xs">
-                      {/* Scale Slider */}
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-zinc-400 font-medium w-16">Size/Scale</span>
-                        <input 
-                          type="range" 
-                          min="0.7" 
-                          max="1.6" 
-                          step="0.02" 
-                          value={tryOnScale} 
-                          onChange={(e) => setTryOnScale(parseFloat(e.target.value))}
-                          className="flex-1 accent-yellow-500"
-                        />
-                        <span className="text-zinc-500 font-mono w-8 text-right">{Math.round(tryOnScale * 100)}%</span>
-                      </div>
-
-                      {/* Y position Slider */}
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-zinc-400 font-medium w-16">Vertical</span>
-                        <input 
-                          type="range" 
-                          min="-80" 
-                          max="80" 
-                          step="1" 
-                          value={tryOnY} 
-                          onChange={(e) => setTryOnY(parseInt(e.target.value))}
-                          className="flex-1 accent-yellow-500"
-                        />
-                        <span className="text-zinc-500 font-mono w-8 text-right">{tryOnY}px</span>
-                      </div>
-
-                      {/* X position Slider */}
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-zinc-400 font-medium w-16">Horizontal</span>
-                        <input 
-                          type="range" 
-                          min="-40" 
-                          max="40" 
-                          step="1" 
-                          value={tryOnX} 
-                          onChange={(e) => setTryOnX(parseInt(e.target.value))}
-                          className="flex-1 accent-yellow-500"
-                        />
-                        <span className="text-zinc-500 font-mono w-8 text-right">{tryOnX}px</span>
-                      </div>
-                    </div>
-
-                    {/* Color Swatch Picker */}
-                    <div className="space-y-2 pt-2 border-t border-white/5">
-                      <span className="text-xs font-bold text-white flex items-center gap-1">
-                        <Palette className="w-3.5 h-3.5 text-yellow-500" /> Dye Salon (Color)
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        {HAIR_COLORS.map(c => (
-                          <button
-                            key={c.name}
-                            onClick={() => setActiveColor(c)}
-                            className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all flex items-center gap-1.5 ${
-                              activeColor.name === c.name 
-                                ? 'bg-zinc-800 text-yellow-400 border-yellow-500' 
-                                : 'bg-zinc-900 border-white/5 text-zinc-400 hover:text-white'
-                            }`}
-                          >
-                            <span className="w-2.5 h-2.5 rounded-full shadow-inner" style={{ backgroundColor: c.value }} />
-                            {c.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
                 </div>
 
                 {/* RIGHT COLUMN: Best Matches */}
