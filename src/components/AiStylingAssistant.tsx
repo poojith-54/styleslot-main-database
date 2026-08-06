@@ -2,13 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sparkles, Camera, Upload, Bot, Send, RefreshCw, UserCheck, 
   CheckCircle2, Star, Download, Maximize2, Share2, ArrowLeftRight, 
-  AlertCircle, Info, Zap, X, Trash2, Heart, Sliders, Palette
+  AlertCircle, Info, Zap, X, Trash2, Heart, Sliders, Palette, MapPin
 } from 'lucide-react';
 import { supabase, isDemoMode } from '../supabase';
 
 interface AiStylingAssistantProps {
   onAnalyzeComplete: (report: string) => void;
   walletBalance: number;
+  onFindNearbySalons?: (hairstyle: string) => void;
 }
 
 import { SVG_HAIRSTYLES, HAIR_COLORS } from '../utils/hairLibrary';
@@ -38,7 +39,7 @@ const MODEL_IMAGES: Record<string, string> = {
   "Classic Taper": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400"
 };
 
-export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }: AiStylingAssistantProps) {
+export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, onFindNearbySalons }: AiStylingAssistantProps) {
   // Navigation
   const [activeTab, setActiveTab] = useState<'scan' | 'consult'>('scan');
 
@@ -271,6 +272,16 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
       };
       img.onerror = () => resolve(dataUrl);
     });
+  };
+
+  const handleRefreshScanner = () => {
+    setCapturedImage(null);
+    setDetectedFeatures(null);
+    setFaceShape('');
+    setHairDensity('');
+    setHairLength('');
+    setHasBeard('');
+    setCustomRequest('');
   };
 
   // Camera integration
@@ -1108,6 +1119,23 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance }:
                 <p className="text-xs text-zinc-300 leading-relaxed font-sans">
                   {analysisSummary}
                 </p>
+              </div>
+
+              {/* Find Nearby Salons Prompt Banner */}
+              <div className="bg-gradient-to-br from-yellow-500/15 via-zinc-950 to-zinc-950 border border-yellow-500/30 rounded-3xl p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="space-y-1 text-center md:text-left">
+                  <h4 className="text-xs uppercase font-mono tracking-widest text-yellow-500 font-bold flex items-center justify-center md:justify-start gap-1.5">
+                    <Sparkles className="w-4 h-4 text-yellow-400" /> Style Selection Complete
+                  </h4>
+                  <h3 className="text-sm font-extrabold text-white mt-1">Ready to book this style?</h3>
+                  <p className="text-[10px] text-zinc-400">Find nearby hair salons and barber shops that can execute the <span className="text-yellow-400 font-bold">"{selectedHairstyle}"</span> style.</p>
+                </div>
+                <button
+                  onClick={() => onFindNearbySalons && onFindNearbySalons(selectedHairstyle)}
+                  className="w-full md:w-auto px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-zinc-950 font-black rounded-xl text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-yellow-500/10"
+                >
+                  <MapPin className="w-4 h-4 text-zinc-950" /> Find Nearby Salons
+                </button>
               </div>
 
               {/* BOTTOM GALLERY: Display all generated hairstyle images */}

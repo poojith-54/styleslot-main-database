@@ -9,6 +9,7 @@ import {
 import RoleSwitcher from './components/RoleSwitcher';
 import MockMap from './components/MockMap';
 import AiStylingAssistant from './components/AiStylingAssistant';
+import GoogleMapComponent from './components/GoogleMapComponent';
 import CheckoutWizard from './components/CheckoutWizard';
 import OwnerDashboard from './components/OwnerDashboard';
 import StylistWorkspace from './components/StylistWorkspace';
@@ -82,7 +83,7 @@ export default function App() {
 
   // App UI Navigation States
   const [currentRole, setCurrentRole] = useState<'customer' | 'owner' | 'barber' | 'admin'>('customer');
-  const [activeCustomerTab, setActiveCustomerTab] = useState<'explore' | 'bookings' | 'vip' | 'ai-lab'>('explore');
+  const [activeCustomerTab, setActiveCustomerTab] = useState<'explore' | 'nearby' | 'bookings' | 'vip' | 'ai-lab'>('explore');
 
   // Admin route & authentication states
   const [isAdminPath, setIsAdminPath] = useState<boolean>(() => {
@@ -106,47 +107,95 @@ export default function App() {
   const [checkoutShop, setCheckoutShop] = useState<Shop | null>(null);
 
   // Geographic location coordinates & address
-  const [userCoordinates, setUserCoordinates] = useState<{ lat: number; lng: number }>({ lat: 19.0760, lng: 72.8777 });
-  const [userAddress, setUserAddress] = useState<string>('Bandra West, Mumbai, India');
+  const [userCoordinates, setUserCoordinates] = useState<{ lat: number; lng: number }>({ lat: 17.6868, lng: 83.2185 });
+  const [userAddress, setUserAddress] = useState<string>('Visakhapatnam, Andhra Pradesh, India');
   const [isMapModalOpen, setIsMapModalOpen] = useState<boolean>(false);
   const [mapSearchQuery, setMapSearchQuery] = useState<string>('');
+  const [selectedHairstyleForMap, setSelectedHairstyleForMap] = useState<string>('');
+
+  const handleSaveSalonSelection = async (selection: {
+    googlePlaceId: string;
+    salonName: string;
+    latitude: number;
+    longitude: number;
+    selectedHairstyle: string;
+  }) => {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch('/api/selected-salons', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(selection)
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save salon selection');
+      }
+
+      triggerToast(`Successfully booked & saved: ${selection.salonName} with style "${selection.selectedHairstyle}"!`, 'success');
+      
+      // Refresh user selections if required, and close modal after short delay
+      setTimeout(() => {
+        setIsMapModalOpen(false);
+        setSelectedHairstyleForMap('');
+      }, 1500);
+    } catch (err: any) {
+      console.error(err);
+      triggerToast(err.message || 'Failed to save salon selection', 'error');
+    }
+  };
 
   const handleMapSearch = () => {
     if (!mapSearchQuery.trim()) return;
     const query = mapSearchQuery.toLowerCase();
     
-    if (query.includes('colaba') || query.includes('taj')) {
-      setUserCoordinates({ lat: 18.9220, lng: 72.8347 });
-      setUserAddress('Taj Mahal Palace, Colaba, Mumbai');
-      triggerToast('Centered coordinates to: Colaba District', 'info');
-    } else if (query.includes('bandra') || query.includes('link') || query.includes('carter')) {
-      setUserCoordinates({ lat: 19.0600, lng: 72.8300 });
-      setUserAddress('Bandra West, Mumbai, India');
-      triggerToast('Centered coordinates to: Bandra West', 'info');
-    } else if (query.includes('fort') || query.includes('heritage')) {
-      setUserCoordinates({ lat: 18.9350, lng: 72.8360 });
-      setUserAddress('Fort Historical Sector, Mumbai');
-      triggerToast('Centered coordinates to: Fort District', 'info');
-    } else if (query.includes('powai') || query.includes('hiranandani')) {
-      setUserCoordinates({ lat: 19.1176, lng: 72.9060 });
-      setUserAddress('Hiranandani Gardens, Powai, Mumbai');
-      triggerToast('Centered coordinates to: Powai Valley', 'info');
-    } else if (query.includes('juhu') || query.includes('beach')) {
-      setUserCoordinates({ lat: 19.1000, lng: 72.8200 });
-      setUserAddress('Juhu Tara Road, Juhu Beach, Mumbai');
-      triggerToast('Centered coordinates to: Juhu Beach', 'info');
+    if (query.includes('visakhapatnam') || query.includes('vizag')) {
+      setUserCoordinates({ lat: 17.6868, lng: 83.2185 });
+      setUserAddress('Visakhapatnam, Andhra Pradesh, India');
+      triggerToast('Centered coordinates to: Visakhapatnam Center', 'info');
+    } else if (query.includes('vijayawada')) {
+      setUserCoordinates({ lat: 16.5062, lng: 80.6480 });
+      setUserAddress('Vijayawada, Andhra Pradesh, India');
+      triggerToast('Centered coordinates to: Vijayawada', 'info');
+    } else if (query.includes('guntur')) {
+      setUserCoordinates({ lat: 16.3067, lng: 80.4365 });
+      setUserAddress('Guntur, Andhra Pradesh, India');
+      triggerToast('Centered coordinates to: Guntur District', 'info');
+    } else if (query.includes('tirupati')) {
+      setUserCoordinates({ lat: 13.6284, lng: 79.4192 });
+      setUserAddress('Tirupati, Andhra Pradesh, India');
+      triggerToast('Centered coordinates to: Tirupati Temple Area', 'info');
+    } else if (query.includes('podalakuru')) {
+      setUserCoordinates({ lat: 14.3941, lng: 79.7297 });
+      setUserAddress('Podalakuru, Nellore District, AP, India');
+      triggerToast('Centered coordinates to: Podalakuru Mandal', 'info');
+    } else if (query.includes('kakinada')) {
+      setUserCoordinates({ lat: 16.9891, lng: 82.2475 });
+      setUserAddress('Kakinada, Andhra Pradesh, India');
+      triggerToast('Centered coordinates to: Kakinada Port Area', 'info');
+    } else if (query.includes('rajahmundry')) {
+      setUserCoordinates({ lat: 17.0005, lng: 81.8040 });
+      setUserAddress('Rajahmundry, Andhra Pradesh, India');
+      triggerToast('Centered coordinates to: Rajahmundry City', 'info');
     } else {
       const latOffset = (Math.random() - 0.5) * 0.04;
       const lngOffset = (Math.random() - 0.5) * 0.04;
-      const targetLat = 19.0760 + latOffset;
-      const targetLng = 72.8777 + lngOffset;
+      const targetLat = 17.6868 + latOffset;
+      const targetLng = 83.2185 + lngOffset;
       
       setUserCoordinates({ lat: targetLat, lng: targetLng });
       const formattedAddress = mapSearchQuery
         .split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
-      setUserAddress(`${formattedAddress}, Mumbai, India`);
+      setUserAddress(`${formattedAddress}, Andhra Pradesh, India`);
       triggerToast(`Geocoded and panned map to: ${formattedAddress}`, 'success');
     }
   };
@@ -228,8 +277,10 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
+        sessionStorage.setItem('sb-access-token', session.access_token);
         fetchAllData(session.access_token);
       } else {
+        sessionStorage.removeItem('sb-access-token');
         if (checkAdminPathActive()) {
           fetchAllData();
         } else {
@@ -241,8 +292,10 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
+        sessionStorage.setItem('sb-access-token', session.access_token);
         fetchAllData(session.access_token);
       } else {
+        sessionStorage.removeItem('sb-access-token');
         if (checkAdminPathActive()) {
           // Keep data if admin path is active to allow guest admin login view to show database tables
         } else {
@@ -892,6 +945,7 @@ export default function App() {
               <div className="flex border-b border-white/5 bg-zinc-950/40 rounded-xl p-1 gap-1">
                 {[
                   { id: 'explore', label: 'Explore Shops' },
+                  { id: 'nearby', label: 'Nearby Salons' },
                   { id: 'bookings', label: 'Queue & History' },
                   { id: 'vip', label: 'VIP Passports' },
                   { id: 'ai-lab', label: 'AI Grooming Lab' }
@@ -1044,6 +1098,23 @@ export default function App() {
                     {cmsData.about_section?.image && (
                       <img src={cmsData.about_section.image} alt="Heritage branding" className="w-full h-44 object-cover rounded-2xl border border-white/10" />
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB CONTENT: NEARBY SALONS MODULE */}
+              {activeCustomerTab === 'nearby' && (
+                <div className="space-y-6">
+                  <div className="h-[600px] rounded-3xl overflow-hidden border border-white/10 bg-zinc-950/40 relative">
+                    <GoogleMapComponent
+                      selectedHairstyle={selectedHairstyleForMap}
+                      userCoordinates={userCoordinates}
+                      setUserCoordinates={setUserCoordinates}
+                      userAddress={userAddress}
+                      setUserAddress={setUserAddress}
+                      onSaveSelection={handleSaveSalonSelection}
+                      fullscreenMode={true}
+                    />
                   </div>
                 </div>
               )}
@@ -1232,6 +1303,10 @@ export default function App() {
                 <AiStylingAssistant 
                   walletBalance={profile?.walletBalance || 0}
                   onAnalyzeComplete={(report) => triggerToast('AI Grooming report synthesized!', 'success')} 
+                  onFindNearbySalons={(hairstyle) => {
+                    setSelectedHairstyleForMap(hairstyle);
+                    setIsMapModalOpen(true);
+                  }}
                 />
               )}
 
@@ -1490,6 +1565,7 @@ export default function App() {
                 onClick={() => {
                   setIsMapModalOpen(false);
                   setMapSearchQuery('');
+                  setSelectedHairstyleForMap('');
                 }}
                 className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white text-lg transition"
               >
@@ -1497,105 +1573,16 @@ export default function App() {
               </button>
             </div>
 
-            {/* Search Bar HUD */}
-            <div className="p-4 bg-zinc-900/60 border-b border-white/5 flex flex-col sm:flex-row items-center gap-3 shrink-0">
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                <input
-                  type="text"
-                  value={mapSearchQuery}
-                  onChange={(e) => setMapSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleMapSearch();
-                  }}
-                  placeholder="Search city location (e.g. Downtown, Old Town, Creative District, Cyber Alley, Metro Center)..."
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-yellow-500/50"
-                />
-              </div>
-              <button
-                onClick={handleMapSearch}
-                className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-600 text-zinc-950 font-bold rounded-xl text-xs hover:opacity-95 transition cursor-pointer"
-              >
-                Search Location
-              </button>
-            </div>
-
-            {/* Main Area: Split Screen Map & Shop Sidebar */}
-            <div className="flex-1 flex flex-col md:flex-row min-h-0">
-              
-              {/* Map Viewport */}
-              <div className="flex-1 relative h-64 md:h-full min-h-0 bg-zinc-900 border-r border-white/5">
-                <MockMap 
-                  shops={filteredShops}
-                  selectedShop={selectedShop}
-                  onSelectShop={(shop) => {
-                    setSelectedShop(shop);
-                  }}
-                  userCoordinates={userCoordinates}
-                  userAddress={userAddress}
-                  activeHomeServiceBarber={activeTrackerLink}
-                />
-              </div>
-
-              {/* Sidebar: Shops matching the active search */}
-              <div className="w-full md:w-80 bg-zinc-950 overflow-y-auto p-4 space-y-3 shrink-0 min-h-0 flex flex-col border-t md:border-t-0 border-white/5">
-                <h4 className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Shops in this Area ({filteredShops.length})</h4>
-                <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-0">
-                  {filteredShops.length === 0 ? (
-                    <p className="text-xs text-zinc-600 italic text-center py-8">No shops match the selected radius filters.</p>
-                  ) : (
-                    filteredShops.map((shop) => {
-                      const isSel = selectedShop?.id === shop.id;
-                      return (
-                        <div 
-                          key={shop.id}
-                          onClick={() => setSelectedShop(shop)}
-                          className={`p-3 rounded-xl border transition-all cursor-pointer flex gap-3 ${
-                            isSel 
-                              ? 'bg-[#D4AF37]/10 border-[#D4AF37]' 
-                              : 'bg-zinc-900/60 border-white/5 hover:border-white/10'
-                          }`}
-                        >
-                          <img src={shop.image} alt={shop.name} className="w-12 h-12 rounded-lg object-cover grayscale" />
-                          <div className="space-y-0.5">
-                            <h5 className="text-xs font-bold text-white flex items-center gap-1">
-                              {shop.name}
-                              {shop.isVerified && <span className="text-[9px] text-blue-400">✔️</span>}
-                            </h5>
-                            <p className="text-[9px] text-zinc-400 leading-tight truncate max-w-[170px]">{shop.address}</p>
-                            <div className="flex items-center gap-2 text-[9px] font-mono">
-                              <span className="text-yellow-400">★ {shop.rating}</span>
-                              <span className="text-zinc-500">({shop.reviewsCount} reviews)</span>
-                              <span className="text-theme-primary font-bold">📍 {shop.distance} km</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {selectedShop && (
-                  <div className="border-t border-white/5 pt-3 mt-1 shrink-0 space-y-2">
-                    <div className="text-xs font-bold text-white flex justify-between items-center">
-                      <span>Selected: {selectedShop.name}</span>
-                      <span className="text-theme-primary font-mono text-[10px]">{selectedShop.distance} km away</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setIsMapModalOpen(false);
-                        const exploreSection = document.getElementById('explore-catalog-grid');
-                        if (exploreSection) {
-                          exploreSection.scrollIntoView({ behavior: 'smooth' });
-                        }
-                      }}
-                      className="w-full bg-theme-primary text-zinc-950 font-bold py-2 rounded-xl text-xs hover:opacity-95 transition cursor-pointer"
-                    >
-                      Focus this Salon in Catalog
-                    </button>
-                  </div>
-                )}
-              </div>
+            {/* Main Area: Google Map Component */}
+            <div className="flex-1 min-h-0 relative">
+              <GoogleMapComponent
+                selectedHairstyle={selectedHairstyleForMap}
+                userCoordinates={userCoordinates}
+                setUserCoordinates={setUserCoordinates}
+                userAddress={userAddress}
+                setUserAddress={setUserAddress}
+                onSaveSelection={handleSaveSalonSelection}
+              />
             </div>
 
             {/* Footer */}

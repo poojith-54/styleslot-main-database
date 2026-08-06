@@ -463,3 +463,103 @@ ON CONFLICT (id) DO UPDATE SET
   shop_id = EXCLUDED.shop_id, customer_name = EXCLUDED.customer_name, avatar = EXCLUDED.avatar,
   rating = EXCLUDED.rating, date = EXCLUDED.date, comment = EXCLUDED.comment,
   service_name = EXCLUDED.service_name, photos = EXCLUDED.photos;
+
+
+-- 10. SELECTED_SALONS Table (Saves user salon selections from Google Places API)
+CREATE TABLE IF NOT EXISTS public.selected_salons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  google_place_id TEXT NOT NULL,
+  salon_name TEXT NOT NULL,
+  latitude NUMERIC(9, 6) NOT NULL,
+  longitude NUMERIC(9, 6) NOT NULL,
+  selected_hairstyle TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.selected_salons ENABLE ROW LEVEL SECURITY;
+
+-- Selections Policies
+CREATE POLICY "Users can manage their own selected salons" ON public.selected_salons
+  USING (auth.uid() = user_id);
+
+
+-- 11. SEARCH_HISTORY Table (Saves user's target search locations)
+CREATE TABLE IF NOT EXISTS public.search_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  query TEXT NOT NULL,
+  latitude NUMERIC(9, 6),
+  longitude NUMERIC(9, 6),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.search_history ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can manage their own search history" ON public.search_history
+  USING (auth.uid() = user_id);
+
+
+-- 12. RECENTLY_VIEWED Table (Saves user's recently viewed salons)
+CREATE TABLE IF NOT EXISTS public.recently_viewed (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  google_place_id TEXT NOT NULL,
+  salon_name TEXT NOT NULL,
+  address TEXT NOT NULL,
+  latitude NUMERIC(9, 6) NOT NULL,
+  longitude NUMERIC(9, 6) NOT NULL,
+  rating NUMERIC(3, 2),
+  image TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.recently_viewed ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can manage their own recently viewed list" ON public.recently_viewed
+  USING (auth.uid() = user_id);
+
+
+-- 13. USER_FAVORITES Table (Saves user's favorited salons and spas)
+CREATE TABLE IF NOT EXISTS public.user_favorites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  google_place_id TEXT NOT NULL,
+  salon_name TEXT NOT NULL,
+  address TEXT NOT NULL,
+  latitude NUMERIC(9, 6) NOT NULL,
+  longitude NUMERIC(9, 6) NOT NULL,
+  rating NUMERIC(3, 2),
+  image TEXT,
+  category TEXT NOT NULL, -- 'salon' or 'spa' or 'barber'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, google_place_id)
+);
+
+-- Enable RLS
+ALTER TABLE public.user_favorites ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can manage their own favorites" ON public.user_favorites
+  USING (auth.uid() = user_id);
+
+
+-- 14. Add enrichment columns to public.shops table
+ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS google_place_id TEXT;
+ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS owner_name TEXT;
+ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS whatsapp_number TEXT;
+ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS additional_photos TEXT[];
+ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS haircut_price NUMERIC(6, 2);
+ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS beard_price NUMERIC(6, 2);
+ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS spa_services TEXT[];
+ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS instagram_url TEXT;
+ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS facebook_url TEXT;
+ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS offers TEXT;
+
+
+

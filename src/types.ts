@@ -53,6 +53,16 @@ export interface Shop {
   isFeatured: boolean;
   workingHours: string;
   reviews?: Review[];
+  googlePlaceId?: string;
+  ownerName?: string;
+  whatsappNumber?: string;
+  additionalPhotos?: string[];
+  haircutPrice?: number;
+  beardPrice?: number;
+  spaServices?: string[];
+  instagram?: string;
+  facebook?: string;
+  offers?: string;
 }
 
 export interface Booking {

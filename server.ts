@@ -36,6 +36,10 @@ if (!useMockDatabase) {
 // --- IN-MEMORY DATABASE FALLBACK TABLES ---
 export const mockProfiles: any[] = [];
 export const mockBookings: any[] = [];
+export const mockSelectedSalons: any[] = [];
+export const mockSearchHistory: any[] = [];
+export const mockRecentlyViewed: any[] = [];
+export const mockUserFavorites: any[] = [];
 
 export const mockShops: any[] = [
   {
@@ -183,6 +187,84 @@ export const mockShops: any[] = [
     reviews: [
       { id: 'rev-5', shop_id: 'shop-5', customer_name: 'Marcus J.', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=80', rating: 5, date: '2026-06-05', comment: 'Kenji has an absolute god-tier wrist with clippers. Drop fade is completely seamless!', service_name: 'Master Taper & Drop-Fade' }
     ]
+  },
+  {
+    id: 'shop-ap-podalakuru',
+    name: 'Sri Balaji Grooming Studio',
+    image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=400',
+    banner: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=1200',
+    rating: 4.8,
+    reviews_count: 54,
+    distance: 0.5,
+    address: 'Podalakuru Road, Podalakuru, Nellore District, AP, 524345',
+    latitude: 14.3941,
+    longitude: 79.7297,
+    is_verified: true,
+    is_featured: true,
+    working_hours: '08:00 AM - 08:30 PM',
+    features: ['A/C', 'Water Filter', 'Waiting Lounge', 'Home Service Available'],
+    categories: ['Haircut', 'Beard Styling', 'Massage'],
+    home_service: true,
+    services: [
+      { id: 'srv-ap-1', shop_id: 'shop-ap-podalakuru', name: 'Balaji Classic Haircut', category: 'Haircut', price: 150.00, duration: 30, description: 'Classic scissors and clippers cut.' },
+      { id: 'srv-ap-2', shop_id: 'shop-ap-podalakuru', name: 'Beard Trim & Shape', category: 'Beard Styling', price: 100.00, duration: 15, description: 'Quick trim and shape with warm foam.' }
+    ],
+    barbers: [
+      { id: 'barber-ap-1', shop_id: 'shop-ap-podalakuru', name: 'K. Ramanaiah', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=150', rating: 4.8, is_available: true, specialty: 'Classic Scissor Cuts', bio: 'Specialist in traditional haircuts for all ages.' }
+    ],
+    reviews: [],
+    google_place_id: 'place-mock-podalakuru',
+    owner_name: 'K. Ramanaiah',
+    whatsapp_number: '+91 94405 82928',
+    additional_photos: [
+      'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&q=80&w=400'
+    ],
+    instagram_url: 'https://instagram.com/balajigrooming',
+    facebook_url: 'https://facebook.com/balajigrooming',
+    offers: 'Festival Special Discount: Haircut + Shave at just ₹220',
+    haircut_price: 150.00,
+    beard_price: 100.00,
+    spa_services: ['Head Massage', 'Face Pack Spa']
+  },
+  {
+    id: 'shop-ap-vizag',
+    name: 'Coastal Trim & Hair Spa',
+    image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&q=80&w=400',
+    banner: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=1200',
+    rating: 4.9,
+    reviews_count: 120,
+    distance: 1.5,
+    address: 'Beach Road, Visakhapatnam, AP, 530003',
+    latitude: 17.6868,
+    longitude: 83.2185,
+    is_verified: true,
+    is_featured: true,
+    working_hours: '09:00 AM - 09:30 PM',
+    features: ['Premium Coffee', 'A/C', 'Sea View Window Seats', 'Valet Parking'],
+    categories: ['Haircut', 'Beard Styling', 'Hair Spa', 'Facial'],
+    home_service: false,
+    services: [
+      { id: 'srv-ap-3', shop_id: 'shop-ap-vizag', name: 'Vizag Beach Haircut', category: 'Haircut', price: 450.00, duration: 40, description: 'Sea breeze inspired textured haircut.' },
+      { id: 'srv-ap-4', shop_id: 'shop-ap-vizag', name: 'Coastal Beard Styling', category: 'Beard Styling', price: 300.00, duration: 25, description: 'Sharp razor outlining and oiling.' }
+    ],
+    barbers: [
+      { id: 'barber-ap-2', shop_id: 'shop-ap-vizag', name: 'Chandra Sekhar', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150', rating: 4.9, is_available: true, specialty: 'Fades & Line-ups', bio: 'Focused on clean outlines and modern textured styling.' }
+    ],
+    reviews: [],
+    google_place_id: 'place-mock-vizag',
+    owner_name: 'Chandra Sekhar',
+    whatsapp_number: '+91 89125 54332',
+    additional_photos: [
+      'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1512864084360-7c0c4d0a0845?auto=format&fit=crop&q=80&w=400'
+    ],
+    instagram_url: 'https://instagram.com/coastaltrim',
+    facebook_url: 'https://facebook.com/coastaltrim',
+    offers: 'Weekend Combo Offer: Free scalp scrub with Haircut',
+    haircut_price: 450.00,
+    beard_price: 300.00,
+    spa_services: ['Hydro-Spa Hair therapy', 'Marine Facial']
   }
 ];
 
@@ -274,7 +356,17 @@ function mapDbShopToUi(shop: any): Shop {
     workingHours: shop.working_hours,
     services: (shop.services || []).map(mapDbServiceToUi),
     barbers: (shop.barbers || []).map(mapDbBarberToUi),
-    reviews: (shop.reviews || []).map(mapDbReviewToUi)
+    reviews: (shop.reviews || []).map(mapDbReviewToUi),
+    googlePlaceId: shop.google_place_id || undefined,
+    ownerName: shop.owner_name || undefined,
+    whatsappNumber: shop.whatsapp_number || undefined,
+    additionalPhotos: shop.additional_photos || undefined,
+    haircutPrice: shop.haircut_price ? Number(shop.haircut_price) : undefined,
+    beardPrice: shop.beard_price ? Number(shop.beard_price) : undefined,
+    spaServices: shop.spa_services || undefined,
+    instagram: shop.instagram_url || undefined,
+    facebook: shop.facebook_url || undefined,
+    offers: shop.offers || undefined
   };
 }
 
@@ -1129,6 +1221,301 @@ export async function createApp() {
       }
       await supabaseAdmin.from('profiles').update({ favorites: favs }).eq('id', profile.id);
       res.json({ success: true, favorites: favs });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- GOOGLE PLACES / SELECTED SALONS ---
+  app.get('/api/selected-salons', async (req, res) => {
+    try {
+      const profile = await getAuthenticatedUser(req);
+      if (!profile) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      if (useMockDatabase) {
+        const userSelections = mockSelectedSalons.filter(s => s.user_id === profile.id);
+        return res.json(userSelections);
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('selected_salons')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/selected-salons', async (req, res) => {
+    try {
+      const { googlePlaceId, salonName, latitude, longitude, selectedHairstyle } = req.body;
+      if (!googlePlaceId || !salonName || latitude === undefined || longitude === undefined || !selectedHairstyle) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+
+      const profile = await getAuthenticatedUser(req);
+      if (!profile) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const newSelection = {
+        user_id: profile.id,
+        google_place_id: googlePlaceId,
+        salon_name: salonName,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        selected_hairstyle: selectedHairstyle
+      };
+
+      if (useMockDatabase) {
+        const entry = { id: `sel-${Date.now()}`, ...newSelection, created_at: new Date().toISOString() };
+        mockSelectedSalons.push(entry);
+        return res.status(201).json({ success: true, selection: entry });
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('selected_salons')
+        .insert(newSelection)
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.status(201).json({ success: true, selection: data });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- SEARCH HISTORY ---
+  app.get('/api/search-history', async (req, res) => {
+    try {
+      const profile = await getAuthenticatedUser(req);
+      if (!profile) return res.status(401).json({ error: 'Unauthorized' });
+
+      if (useMockDatabase) {
+        const history = mockSearchHistory
+          .filter(h => h.user_id === profile.id)
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return res.json(history);
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('search_history')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/search-history', async (req, res) => {
+    try {
+      const { query, latitude, longitude } = req.body;
+      if (!query) return res.status(400).json({ error: 'Query is required' });
+
+      const profile = await getAuthenticatedUser(req);
+      if (!profile) return res.status(401).json({ error: 'Unauthorized' });
+
+      const entry = {
+        user_id: profile.id,
+        query,
+        latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
+        created_at: new Date().toISOString()
+      };
+
+      if (useMockDatabase) {
+        const item = { id: `hist-${Date.now()}`, ...entry };
+        mockSearchHistory.push(item);
+        return res.status(201).json({ success: true, history: item });
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('search_history')
+        .insert(entry)
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.status(201).json({ success: true, history: data });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- RECENTLY VIEWED ---
+  app.get('/api/recently-viewed', async (req, res) => {
+    try {
+      const profile = await getAuthenticatedUser(req);
+      if (!profile) return res.status(401).json({ error: 'Unauthorized' });
+
+      if (useMockDatabase) {
+        const viewed = mockRecentlyViewed
+          .filter(v => v.user_id === profile.id)
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return res.json(viewed);
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('recently_viewed')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/recently-viewed', async (req, res) => {
+    try {
+      const { googlePlaceId, salonName, address, latitude, longitude, rating, image } = req.body;
+      if (!googlePlaceId || !salonName || !address || latitude === undefined || longitude === undefined) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+
+      const profile = await getAuthenticatedUser(req);
+      if (!profile) return res.status(401).json({ error: 'Unauthorized' });
+
+      const entry = {
+        user_id: profile.id,
+        google_place_id: googlePlaceId,
+        salon_name: salonName,
+        address,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        rating: rating ? parseFloat(rating) : null,
+        image: image || null,
+        created_at: new Date().toISOString()
+      };
+
+      if (useMockDatabase) {
+        const index = mockRecentlyViewed.findIndex(v => v.user_id === profile.id && v.google_place_id === googlePlaceId);
+        if (index !== -1) mockRecentlyViewed.splice(index, 1);
+        
+        const item = { id: `view-${Date.now()}`, ...entry };
+        mockRecentlyViewed.push(item);
+        return res.status(201).json({ success: true, recentlyViewed: item });
+      }
+
+      await supabaseAdmin.from('recently_viewed').delete().eq('user_id', profile.id).eq('google_place_id', googlePlaceId);
+
+      const { data, error } = await supabaseAdmin
+        .from('recently_viewed')
+        .insert(entry)
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.status(201).json({ success: true, recentlyViewed: data });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- USER FAVORITES ---
+  app.get('/api/favorites', async (req, res) => {
+    try {
+      const profile = await getAuthenticatedUser(req);
+      if (!profile) return res.status(401).json({ error: 'Unauthorized' });
+
+      if (useMockDatabase) {
+        const favs = mockUserFavorites.filter(f => f.user_id === profile.id);
+        return res.json(favs);
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('user_favorites')
+        .select('*')
+        .eq('user_id', profile.id);
+
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/favorites', async (req, res) => {
+    try {
+      const { googlePlaceId, salonName, address, latitude, longitude, rating, image, category } = req.body;
+      if (!googlePlaceId || !salonName || !address || latitude === undefined || longitude === undefined || !category) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+
+      const profile = await getAuthenticatedUser(req);
+      if (!profile) return res.status(401).json({ error: 'Unauthorized' });
+
+      const entry = {
+        user_id: profile.id,
+        google_place_id: googlePlaceId,
+        salon_name: salonName,
+        address,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        rating: rating ? parseFloat(rating) : null,
+        image: image || null,
+        category: category,
+        created_at: new Date().toISOString()
+      };
+
+      if (useMockDatabase) {
+        const exists = mockUserFavorites.some(f => f.user_id === profile.id && f.google_place_id === googlePlaceId);
+        if (!exists) {
+          const item = { id: `fav-${Date.now()}`, ...entry };
+          mockUserFavorites.push(item);
+          return res.status(201).json({ success: true, favorite: item });
+        }
+        return res.json({ success: true, message: 'Already in favorites' });
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('user_favorites')
+        .upsert(entry, { onConflict: 'user_id,google_place_id' })
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.status(201).json({ success: true, favorite: data });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/favorites/:placeId', async (req, res) => {
+    try {
+      const { placeId } = req.params;
+      const profile = await getAuthenticatedUser(req);
+      if (!profile) return res.status(401).json({ error: 'Unauthorized' });
+
+      if (useMockDatabase) {
+        const index = mockUserFavorites.findIndex(f => f.user_id === profile.id && f.google_place_id === placeId);
+        if (index !== -1) {
+          mockUserFavorites.splice(index, 1);
+        }
+        return res.json({ success: true, message: 'Removed from favorites' });
+      }
+
+      const { error } = await supabaseAdmin
+        .from('user_favorites')
+        .delete()
+        .eq('user_id', profile.id)
+        .eq('google_place_id', placeId);
+
+      if (error) throw error;
+      res.json({ success: true, message: 'Removed from favorites' });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
