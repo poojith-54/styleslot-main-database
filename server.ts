@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import { InferenceClient } from '@huggingface/inference';
 import { Shop, Booking, UserProfile, Service, Barber, Review, Coupon, Membership } from './src/types';
 import { SVG_HAIRSTYLES } from './src/utils/hairLibrary';
 
@@ -2002,6 +2003,224 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
       console.warn("Gemini API call failed, generating fallback styled JSON:", e.message || e);
       const data = generateFallback();
       res.json(data);
+    }
+  });
+
+  // --- HUGGING FACE ZERO-COST REMOTE AI HAIRSTYLE IMAGE GENERATOR ---
+  app.post('/api/ai/hf-hairstyle-edit', async (req, res) => {
+    const { image, faceShape, hairDensity, hairLength, hasBeard, customRequest, specificHairstyle } = req.body;
+
+    // 1. Strict Mandatory Fields Validation
+    const errors: Record<string, string> = {};
+    if (!image) errors.image = "Uploaded portrait photo is required.";
+    if (!faceShape) errors.faceShape = "Face shape must be selected.";
+    if (!hairDensity) errors.hairDensity = "Hair density must be selected.";
+    if (!hairLength) errors.hairLength = "Hair length must be selected.";
+    if (!hasBeard) errors.hasBeard = "Beard contouring must be selected.";
+    if (!customRequest || !customRequest.trim()) errors.customRequest = "Custom aesthetic goal is required.";
+
+    if (Object.keys(errors).length > 0) {
+      return res.status(400).json({
+        error: "All mandatory profile parameters must be selected before generating recommendations.",
+        details: errors,
+        providerStatus: "VALIDATION_FAILED",
+        generationStatus: "FAILED"
+      });
+    }
+
+    const hfToken = process.env.HF_TOKEN;
+    const HF_MODEL = 'black-forest-labs/FLUX.1-Kontext-dev';
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // 2. Identity Preservation Prompt Construction
+    const targetStyle = specificHairstyle || customRequest.trim();
+    const editingPrompt = `Edit the provided reference photo.
+
+Keep the exact same person.
+
+Preserve the person's identity and facial appearance.
+
+Preserve the face shape, eyes, eyebrows, nose, lips, skin tone, facial proportions, expression, beard unless the user explicitly requests a beard change, body position, clothing, lighting, camera angle, and background.
+
+Change ONLY the hairstyle requested by the user.
+
+Modify the hair style, hair length, hair texture, hair volume and hair color only when explicitly requested.
+
+The hairstyle must naturally fit the person's existing head shape, hairline and facial structure.
+
+Do not create a new person.
+
+Do not replace the face.
+
+Do not alter facial features.
+
+Do not change the clothing.
+
+Do not change the background.
+
+Do not change the camera angle.
+
+Create a photorealistic hairstyle edit that looks naturally attached to the person's existing head.
+
+Face shape: ${faceShape}.
+Hair density: ${hairDensity}.
+Hair length: ${hairLength}.
+Beard contouring: ${hasBeard === 'Yes' ? 'Contoured' : 'Clean Shaven'}.
+Requested hairstyle: ${targetStyle}.`;
+
+    // 3. Ensure token is present on server
+    if (!hfToken || hfToken.trim() === '') {
+      return res.status(503).json({
+        error: "Free AI image generation requires HF_TOKEN configured in the server environment. Please configure your Hugging Face Token in server settings.",
+        providerStatus: "CONFIG_REQUIRED",
+        requestId,
+        generationStatus: "FAILED",
+        model: HF_MODEL
+      });
+    }
+
+    try {
+      // 4. Process image buffer safely
+      let base64Data = image;
+      let mimeType = 'image/jpeg';
+      if (image.startsWith('data:')) {
+        const matches = image.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+          mimeType = matches[1];
+          base64Data = matches[2];
+        }
+      }
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      const imageBlob = new Blob([imageBuffer], { type: mimeType });
+
+      // 5. Remote inference via Hugging Face Inference layer
+      const hf = new InferenceClient(hfToken);
+      let generatedBlob: Blob | null = null;
+
+      try {
+        const result = await hf.imageToImage({
+          model: HF_MODEL,
+          data: imageBlob,
+          parameters: {
+            prompt: editingPrompt,
+            negative_prompt: "blurry, deformed, altered face, different person, new person, disfigured, bad anatomy, cartoon, drawing, watermark",
+            strength: 0.72,
+            guidance_scale: 7.5
+          }
+        });
+        generatedBlob = result as Blob;
+      } catch (hfClientErr: any) {
+        console.warn(`HF InferenceClient call for ${HF_MODEL} error:`, hfClientErr?.message || hfClientErr);
+
+        const errMsg = String(hfClientErr?.message || '');
+        const statusCode = hfClientErr?.status || hfClientErr?.response?.status;
+
+        // Quota Limit / 429
+        if (statusCode === 429 || errMsg.includes('429') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('rate limit')) {
+          return res.status(429).json({
+            error: "Free AI image generation limit has been reached. Please try again later.",
+            providerStatus: "QUOTA_EXCEEDED",
+            requestId,
+            generationStatus: "LIMIT_REACHED",
+            model: HF_MODEL
+          });
+        }
+
+        // Provider Unavailable / 503
+        if (statusCode === 503 || statusCode === 502 || statusCode === 504 || errMsg.includes('503') || errMsg.toLowerCase().includes('currently loading') || errMsg.toLowerCase().includes('unavailable')) {
+          return res.status(503).json({
+            error: "AI hairstyle generation is temporarily unavailable. Please try again.",
+            providerStatus: "PROVIDER_UNAVAILABLE",
+            requestId,
+            generationStatus: "FAILED",
+            model: HF_MODEL
+          });
+        }
+
+        // Fallback check through Router URL
+        const routerUrl = `https://router.huggingface.co/hf-inference/models/${HF_MODEL}`;
+        const fallbackRes = await fetch(routerUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${hfToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            inputs: image,
+            parameters: {
+              prompt: editingPrompt
+            }
+          })
+        });
+
+        if (fallbackRes.status === 429) {
+          return res.status(429).json({
+            error: "Free AI image generation limit has been reached. Please try again later.",
+            providerStatus: "QUOTA_EXCEEDED",
+            requestId,
+            generationStatus: "LIMIT_REACHED",
+            model: HF_MODEL
+          });
+        }
+
+        if (fallbackRes.status === 503 || fallbackRes.status === 502 || fallbackRes.status === 504) {
+          return res.status(503).json({
+            error: "AI hairstyle generation is temporarily unavailable. Please try again.",
+            providerStatus: "PROVIDER_UNAVAILABLE",
+            requestId,
+            generationStatus: "FAILED",
+            model: HF_MODEL
+          });
+        }
+
+        if (!fallbackRes.ok) {
+          return res.status(502).json({
+            error: "Selected AI hairstyle model is currently unavailable. Please try again later.",
+            providerStatus: "MODEL_UNAVAILABLE",
+            requestId,
+            generationStatus: "FAILED",
+            model: HF_MODEL
+          });
+        }
+
+        generatedBlob = await fallbackRes.blob();
+      }
+
+      if (!generatedBlob) {
+        return res.status(502).json({
+          error: "Selected AI hairstyle model is currently unavailable. Please try again later.",
+          providerStatus: "MODEL_UNAVAILABLE",
+          requestId,
+          generationStatus: "FAILED",
+          model: HF_MODEL
+        });
+      }
+
+      // Convert generated blob to base64 data URL
+      const arrayBuffer = await generatedBlob.arrayBuffer();
+      const outputBase64 = Buffer.from(arrayBuffer).toString('base64');
+      const contentType = generatedBlob.type || 'image/jpeg';
+      const generatedImage = `data:${contentType};base64,${outputBase64}`;
+
+      return res.json({
+        generatedImage,
+        providerStatus: "ONLINE",
+        requestId,
+        generationStatus: "COMPLETED",
+        model: HF_MODEL,
+        style: targetStyle,
+        prompt: editingPrompt
+      });
+
+    } catch (err: any) {
+      console.error("Hugging Face remote inference processing error:", err?.message || err);
+      return res.status(500).json({
+        error: "AI hairstyle generation is temporarily unavailable. Please try again.",
+        providerStatus: "ERROR",
+        requestId,
+        generationStatus: "FAILED",
+        model: HF_MODEL
+      });
     }
   });
 

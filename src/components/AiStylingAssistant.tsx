@@ -64,6 +64,13 @@ export default function AiStylingAssistant({
   const [loadingStep, setLoadingStep] = useState('');
   const [cancelRequested, setCancelRequested] = useState(false);
 
+  // Hugging Face Remote AI state
+  const [hfGeneratedImage, setHfGeneratedImage] = useState<string | null>(null);
+  const [hfProviderStatus, setHfProviderStatus] = useState<string | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [isGeneratingVariation, setIsGeneratingVariation] = useState<boolean>(false);
+  const [variationsList, setVariationsList] = useState<Array<{ style: string; image: string; timestamp: string }>>([]);
+
   // Analysis result states
   const [detectedFeatures, setDetectedFeatures] = useState<any | null>(null);
   const [hairGuide, setHairGuide] = useState<any | null>(null);
@@ -201,37 +208,14 @@ export default function AiStylingAssistant({
           ctx.lineTo(w, scanY);
           ctx.stroke();
 
-          // Draw floating coordinate dots on face region
-          const cx = w / 2;
-          const cy = h / 2;
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = '#D4AF37';
-
-          const landmarks = [
-            { x: cx - 45, y: cy + 40 }, { x: cx - 25, y: cy + 55 }, { x: cx, y: cy + 62 }, { x: cx + 25, y: cy + 55 }, { x: cx + 45, y: cy + 40 },
-            { x: cx - 20, y: cy - 12 }, { x: cx - 8, y: cy - 10 }, { x: cx + 8, y: cy - 10 }, { x: cx + 20, y: cy - 12 },
-            { x: cx, y: cy - 25 }, { x: cx, y: cy + 5 }, { x: cx - 6, y: cy + 10 }, { x: cx + 6, y: cy + 10 },
-            { x: cx - 15, y: cy + 28 }, { x: cx + 15, y: cy + 28 }, { x: cx, y: cy + 34 }
-          ];
-
-          landmarks.forEach((pt, idx) => {
-            const flicker = 0.3 + 0.7 * Math.sin(timestamp * 0.02 + idx);
-            ctx.fillStyle = `rgba(212, 175, 55, ${flicker})`;
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Connect neighboring dots
-            if (idx > 0 && idx < 5) {
-              ctx.strokeStyle = `rgba(212, 175, 55, ${flicker * 0.25})`;
-              ctx.lineWidth = 1;
-              ctx.beginPath();
-              ctx.moveTo(landmarks[idx - 1].x, landmarks[idx - 1].y);
-              ctx.lineTo(pt.x, pt.y);
-              ctx.stroke();
-            }
-          });
-          ctx.shadowBlur = 0;
+          // Face oval guide
+          ctx.strokeStyle = 'rgba(212, 175, 55, 0.5)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([6, 6]);
+          ctx.beginPath();
+          ctx.ellipse(w / 2, h / 2, w * 0.28, h * 0.38, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
         }
       }
 
@@ -280,14 +264,28 @@ export default function AiStylingAssistant({
     });
   };
 
+  // Full Refresh Scanner: Removes image, face analysis, results, generated previews, selections, and goal
   const handleRefreshScanner = () => {
     setCapturedImage(null);
     setDetectedFeatures(null);
+    setHairGuide(null);
+    setBestMatches([]);
+    setGoodOptions([]);
+    setLessRecommended([]);
+    setPreviews([]);
+    setAnalysisSummary('');
     setFaceShape('');
     setHairDensity('');
     setHairLength('');
     setHasBeard('');
     setCustomRequest('');
+    setHfGeneratedImage(null);
+    setHfProviderStatus(null);
+    setGenerationError(null);
+    setVariationsList([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   // Camera integration
@@ -346,28 +344,27 @@ export default function AiStylingAssistant({
     }
   };
 
-  // Main Generation Handler
+  // Main Generation Handler (Initial 1 image generated via Hugging Face to conserve free credits)
   const handleRunAiAnalysis = async (customVal?: string) => {
-    if (!capturedImage) return;
+    if (!capturedImage || !faceShape || !hairDensity || !hairLength || !hasBeard || (!customRequest.trim() && !customVal?.trim())) return;
 
     setAnalyzing(true);
     setCancelRequested(false);
+    setGenerationError(null);
+
+    const activeGoal = customVal !== undefined ? customVal : customRequest;
 
     try {
       setLoadingStep("Reading Visual Pixels...");
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 400));
       if (cancelRequested) return;
 
-      setLoadingStep("Detecting Facial Landmarks...");
-      await new Promise(r => setTimeout(r, 600));
+      setLoadingStep("Detecting Facial Landmarks & Bone Structure...");
+      await new Promise(r => setTimeout(r, 400));
       if (cancelRequested) return;
 
-      setLoadingStep("Analyzing Face Shape & Symmetry...");
-      await new Promise(r => setTimeout(r, 500));
-      if (cancelRequested) return;
-
-      setLoadingStep("Generating Hairstyle Strategy...");
-      const response = await fetch('/api/ai/virtual-hairstylist', {
+      setLoadingStep("Synthesizing Hairstyle Strategy & Symmetry...");
+      const stylingRes = await fetch('/api/ai/virtual-hairstylist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -376,49 +373,164 @@ export default function AiStylingAssistant({
           hairDensity,
           hairLength,
           hasBeard,
-          customRequest: customVal !== undefined ? customVal : customRequest
+          customRequest: activeGoal
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Server responded with status: ' + response.status);
+      if (!stylingRes.ok) {
+        throw new Error('Hairstylist analysis service returned status: ' + stylingRes.status);
       }
 
-      const data = await response.json();
+      const stylingData = await stylingRes.json();
       if (cancelRequested) return;
 
-      // Unpack structured data
-      setDetectedFeatures(data.detectedFeatures);
-      setHairGuide(data.hairGuide);
-      setBestMatches(data.bestMatches || []);
-      setGoodOptions(data.goodOptions || []);
-      setLessRecommended(data.lessRecommended || []);
-      setPreviews(data.previews || []);
-      setAnalysisSummary(data.analysisSummary || '');
+      // Unpack structured diagnostic data
+      setDetectedFeatures(stylingData.detectedFeatures);
+      setHairGuide(stylingData.hairGuide);
+      setBestMatches(stylingData.bestMatches || []);
+      setGoodOptions(stylingData.goodOptions || []);
+      setLessRecommended(stylingData.lessRecommended || []);
+      setAnalysisSummary(stylingData.analysisSummary || '');
 
-      // Set default selected style
-      if (data.previews && data.previews.length > 0) {
-        setSelectedHairstyle(data.previews[0].name);
-      } else if (data.bestMatches && data.bestMatches.length > 0) {
-        setSelectedHairstyle(data.bestMatches[0].name);
+      let chosenStyle = selectedHairstyle;
+      if (stylingData.bestMatches && stylingData.bestMatches.length > 0) {
+        chosenStyle = stylingData.bestMatches[0].name;
+        setSelectedHairstyle(chosenStyle);
+      } else if (stylingData.previews && stylingData.previews.length > 0) {
+        chosenStyle = stylingData.previews[0].name;
+        setSelectedHairstyle(chosenStyle);
       }
+
+      // Initial single image generation to conserve free credits
+      setLoadingStep("Executing Remote Hugging Face FLUX.1-Kontext-dev...");
+      let remoteImgUrl: string | null = null;
+
+      try {
+        const hfRes = await fetch('/api/ai/hf-hairstyle-edit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: capturedImage,
+            faceShape,
+            hairDensity,
+            hairLength,
+            hasBeard,
+            customRequest: activeGoal,
+            specificHairstyle: chosenStyle
+          })
+        });
+
+        const hfData = await hfRes.json();
+
+        if (hfRes.ok && hfData.generatedImage) {
+          remoteImgUrl = hfData.generatedImage;
+          setHfGeneratedImage(remoteImgUrl);
+          setHfProviderStatus(hfData.providerStatus || "ONLINE");
+          setGenerationError(null);
+          setVariationsList([{
+            style: chosenStyle,
+            image: remoteImgUrl,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }]);
+        } else {
+          console.warn("Hugging Face remote response:", hfData);
+          setGenerationError(hfData.error || "AI hairstyle generation is temporarily unavailable. Please try again.");
+          setHfProviderStatus(hfData.providerStatus || "UNAVAILABLE");
+        }
+      } catch (hfErr: any) {
+        console.error("Remote Hugging Face fetch error:", hfErr);
+        setGenerationError("AI hairstyle generation is temporarily unavailable. Please try again.");
+      }
+
+      // If remote image succeeded, update preview image for the chosen style
+      let updatedPreviews = (stylingData.previews || []).map((p: any) => {
+        if (p.name === chosenStyle && remoteImgUrl) {
+          return { ...p, image: remoteImgUrl };
+        }
+        return p;
+      });
+      setPreviews(updatedPreviews);
 
       // Add to Cache History
       const newHistoryItem = {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        request: customVal !== undefined ? customVal : customRequest,
-        image: capturedImage,
-        data
+        request: activeGoal,
+        image: remoteImgUrl || capturedImage,
+        data: {
+          ...stylingData,
+          previews: updatedPreviews
+        }
       };
       setHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]);
 
-      onAnalyzeComplete(data.analysisSummary || 'Analysis generated successfully.');
-    } catch (err) {
+      onAnalyzeComplete(stylingData.analysisSummary || 'Analysis generated successfully.');
+    } catch (err: any) {
       console.error('Styling generation error:', err);
+      setGenerationError(err?.message || "Failed to generate AI recommendations. Please check parameters and try again.");
     } finally {
       setAnalyzing(false);
       setLoadingStep('');
     }
+  };
+
+  // Generate on-demand additional variation for current hairstyle without regenerating 10 images
+  const handleGenerateAnotherVariation = async (targetStyle?: string) => {
+    if (!capturedImage || isGeneratingVariation) return;
+    const styleToUse = targetStyle || selectedHairstyle;
+
+    setIsGeneratingVariation(true);
+    setGenerationError(null);
+
+    try {
+      const hfRes = await fetch('/api/ai/hf-hairstyle-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: capturedImage,
+          faceShape,
+          hairDensity,
+          hairLength,
+          hasBeard,
+          customRequest: customRequest.trim() || styleToUse,
+          specificHairstyle: styleToUse
+        })
+      });
+
+      const hfData = await hfRes.json();
+
+      if (hfRes.ok && hfData.generatedImage) {
+        const newImg = hfData.generatedImage;
+        setHfGeneratedImage(newImg);
+        setHfProviderStatus(hfData.providerStatus || "ONLINE");
+        setGenerationError(null);
+
+        // Update variations list
+        setVariationsList(prev => [
+          ...prev,
+          {
+            style: styleToUse,
+            image: newImg,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
+
+        // Update previews list
+        setPreviews(prev => prev.map(p => p.name === styleToUse ? { ...p, image: newImg } : p));
+      } else {
+        setGenerationError(hfData.error || "AI hairstyle generation is temporarily unavailable. Please try again.");
+      }
+    } catch (err) {
+      console.error("Generate variation error:", err);
+      setGenerationError("AI hairstyle generation is temporarily unavailable. Please try again.");
+    } finally {
+      setIsGeneratingVariation(false);
+    }
+  };
+
+  // Refresh ONLY the single specific hairstyle
+  const handleRefreshHairstyle = async (styleName: string) => {
+    setSelectedHairstyle(styleName);
+    await handleGenerateAnotherVariation(styleName);
   };
 
   // Download combined image: user's face + the overlaid hair SVG
@@ -903,38 +1015,90 @@ export default function AiStylingAssistant({
           {/* Main Layout Rows */}
           {detectedFeatures && !isScanning && !analyzing && (
             <div className="space-y-8">
+
+              {/* Error / Quota Notice Banner */}
+              {generationError && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3 text-amber-800 dark:text-amber-300 shadow-sm animate-fade-in">
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-amber-500" />
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold uppercase tracking-wider">AI Generation Status</p>
+                    <p className="text-xs leading-relaxed font-sans">{generationError}</p>
+                  </div>
+                </div>
+              )}
               
               {/* Row 1: Left original and interactive try-on Arena / Right Best Matches */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* LEFT COLUMN: Flat AI Try-On Arena */}
                 <div className="lg:col-span-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-[10px] font-mono tracking-widest ${isLight ? 'text-slate-500' : 'text-zinc-400'} uppercase font-bold`}>Try-On Arena (Active Image)</span>
-                    <button
-                      onClick={handleRefreshScanner}
-                      className="text-[11px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                    >
-                      <span>🔄</span> Refresh Scanner
-                    </button>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-mono tracking-widest ${isLight ? 'text-slate-500' : 'text-zinc-400'} uppercase font-bold`}>Try-On Arena (Active Image)</span>
+                      <span className={`text-[8px] font-mono font-bold px-2 py-0.5 rounded-full border ${isLight ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'}`}>
+                        FLUX.1-Kontext-dev
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleGenerateAnotherVariation()}
+                        disabled={isGeneratingVariation}
+                        className="text-[11px] bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 text-zinc-950 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                        title="Generate another variation of the current hairstyle"
+                      >
+                        <Sparkles className={`w-3.5 h-3.5 ${isGeneratingVariation ? 'animate-spin' : ''}`} />
+                        {isGeneratingVariation ? "Generating..." : "Generate Another Variation"}
+                      </button>
+
+                      <button
+                        onClick={handleRefreshScanner}
+                        className="text-[11px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        title="Reset scanner and upload another photo"
+                      >
+                        <span>🔄</span> Refresh Scanner
+                      </button>
+                    </div>
                   </div>
 
                   {/* Flat composited image container */}
                   <div className={`relative w-full h-[400px] rounded-3xl overflow-hidden border ${isLight ? 'border-slate-200 bg-slate-100 shadow-md' : 'border-white/10 bg-zinc-950'}`}>
                     <img 
-                      src={previews.find(p => p.name === selectedHairstyle)?.image || capturedImage!} 
+                      src={hfGeneratedImage || previews.find(p => p.name === selectedHairstyle)?.image || capturedImage!} 
                       alt="AI Try-On Result" 
                       className="absolute inset-0 w-full h-full object-cover"
                     />
 
                     {/* Custom try-on label overlay */}
-                    <div className="absolute top-4 left-4 bg-black/75 backdrop-blur px-3 py-1 rounded-full text-[9px] font-mono text-zinc-300 border border-white/10">
-                      AI Generated Try-On
+                    <div className="absolute top-4 left-4 bg-black/75 backdrop-blur px-3 py-1 rounded-full text-[9px] font-mono text-zinc-300 border border-white/10 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                      {hfGeneratedImage ? "FLUX.1 Remote Edit" : "AI Generated Try-On"}
                     </div>
 
                     <div className="absolute top-4 right-4 bg-gradient-to-r from-amber-400 to-yellow-500 text-zinc-950 font-bold px-3.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-wider shadow-lg">
                       {selectedHairstyle}
                     </div>
+
+                    {/* Quick Variation Switcher Bar */}
+                    {variationsList.length > 1 && (
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur border border-white/15 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-2xl z-20">
+                        <span className="text-[9px] font-mono text-zinc-400 uppercase">Variations:</span>
+                        {variationsList.map((v, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setHfGeneratedImage(v.image);
+                              setSelectedHairstyle(v.style);
+                            }}
+                            className={`w-5 h-5 rounded-full text-[9px] font-bold font-mono transition flex items-center justify-center cursor-pointer ${
+                              hfGeneratedImage === v.image ? 'bg-yellow-400 text-zinc-950 shadow' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                            }`}
+                          >
+                            {idx + 1}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -958,7 +1122,7 @@ export default function AiStylingAssistant({
                               : (isLight ? 'bg-white border-slate-200 hover:border-amber-300 hover:shadow-sm text-slate-900' : 'bg-zinc-950/80 border-white/5 hover:border-white/10 text-white')
                           }`}
                         >
-                          <div className="w-24 shrink-0">
+                          <div className="w-24 shrink-0 relative group">
                             {previews.find(p => p.name === style.name) ? (
                               <img 
                                 src={previews.find(p => p.name === style.name).image} 
@@ -968,6 +1132,16 @@ export default function AiStylingAssistant({
                             ) : (
                               <FacePreviewCard styleName={style.name} sizeClass="h-24" />
                             )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRefreshHairstyle(style.name);
+                              }}
+                              className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-bold text-yellow-400 rounded-xl transition"
+                              title="Regenerate only this hairstyle"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
+                            </button>
                           </div>
                           <div className="flex-1 space-y-1.5 min-w-0">
                             <div className="flex items-center justify-between">
@@ -1079,15 +1253,27 @@ export default function AiStylingAssistant({
                             : (isLight ? 'bg-white border-slate-200 hover:border-amber-300 hover:shadow-sm text-slate-900' : 'bg-zinc-950/80 border-white/5 hover:border-white/10 text-white')
                         }`}
                       >
-                        {previews.find(p => p.name === style.name) ? (
-                          <img 
-                            src={previews.find(p => p.name === style.name).image} 
-                            alt={style.name} 
-                            className={`w-full h-28 object-cover rounded-xl border ${isLight ? 'border-slate-200 bg-slate-100' : 'border-white/5 bg-zinc-900'}`} 
-                          />
-                        ) : (
-                          <FacePreviewCard styleName={style.name} sizeClass="h-28" />
-                        )}
+                        <div className="relative group rounded-xl overflow-hidden">
+                          {previews.find(p => p.name === style.name) ? (
+                            <img 
+                              src={previews.find(p => p.name === style.name).image} 
+                              alt={style.name} 
+                              className={`w-full h-28 object-cover rounded-xl border ${isLight ? 'border-slate-200 bg-slate-100' : 'border-white/5 bg-zinc-900'}`} 
+                            />
+                          ) : (
+                            <FacePreviewCard styleName={style.name} sizeClass="h-28" />
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRefreshHairstyle(style.name);
+                            }}
+                            className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-bold text-yellow-400 rounded-xl transition"
+                            title="Regenerate only this hairstyle"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
+                          </button>
+                        </div>
                         <div className="space-y-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <h5 className={`text-[11px] font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate`}>{style.name}</h5>
@@ -1244,13 +1430,12 @@ export default function AiStylingAssistant({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedHairstyle(preview.name);
-                                handleRunAiAnalysis(preview.name);
+                                handleRefreshHairstyle(preview.name);
                               }}
-                              className={`${isLight ? 'text-amber-700 hover:text-amber-800' : 'text-zinc-500 hover:text-yellow-400'} transition text-[8px] font-bold tracking-widest shrink-0 uppercase cursor-pointer`}
-                              title="Sync AI Variations"
+                              className={`${isLight ? 'text-amber-700 hover:text-amber-800' : 'text-zinc-500 hover:text-yellow-400'} transition text-[8px] font-bold tracking-widest shrink-0 uppercase cursor-pointer flex items-center gap-1`}
+                              title="Regenerate only this style variation"
                             >
-                              Sync AI
+                              <RefreshCw className="w-2.5 h-2.5" /> Refresh
                             </button>
                           </div>
                         </div>
