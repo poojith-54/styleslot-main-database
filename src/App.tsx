@@ -733,13 +733,18 @@ export default function App() {
         }
         .theme-light .bg-\[\#0A0A0A\],
         .theme-light .bg-\[\#050505\],
+        .theme-light .bg-\[\#0F0F11\],
         .theme-light .bg-\[\#0F0F11\]\/90,
+        .theme-light .bg-\[\#18181B\],
+        .theme-light .bg-\[\#121214\],
         .theme-light .bg-zinc-950,
         .theme-light .bg-zinc-950\/80,
         .theme-light .bg-zinc-950\/40,
+        .theme-light .bg-zinc-950\/50,
         .theme-light .bg-zinc-900,
         .theme-light .bg-zinc-900\/90,
         .theme-light .bg-zinc-900\/80,
+        .theme-light .bg-zinc-900\/50,
         .theme-light .bg-black,
         .theme-light .bg-black\/80,
         .theme-light .bg-black\/60,
@@ -786,6 +791,9 @@ export default function App() {
         .theme-light footer {
           background-color: #F1F5F9 !important;
           border-color: #E2E8F0 !important;
+        }
+        .theme-light .shadow-2xl {
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03) !important;
         }
       `}} />
 
@@ -1063,39 +1071,112 @@ export default function App() {
             {/* LEFT AREA: Explore Catalog & Booking Panels */}
             <div className="lg:col-span-8 space-y-6">
               
-              {/* Dynamic CMS Splash Hero Banner */}
+              {/* Dynamic CMS Splash Hero Banner (Theme-Aware & Interactive) */}
               {cmsData.homepage_sections?.show_hero && (
                 <div 
-                  className="relative h-60 rounded-3xl overflow-hidden bg-gradient-to-r from-black via-zinc-950 to-transparent border border-white/5 shadow-2xl bg-cover bg-center"
-                  style={{ backgroundImage: `linear-gradient(to right, black, rgba(9,9,11,0.5), transparent), url('${cmsData.hero_section?.banner || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=1200'}')` }}
+                  className={`group relative rounded-3xl overflow-hidden border shadow-2xl transition-all duration-500 min-h-[280px] sm:min-h-[260px] flex flex-col justify-center p-6 sm:p-8 ${
+                    theme === 'light' 
+                      ? 'border-slate-200/80 bg-gradient-to-r from-white via-slate-50 to-amber-50/20 shadow-slate-200/80' 
+                      : 'border-white/10 bg-gradient-to-r from-black via-zinc-950 to-black shadow-black/80'
+                  }`}
                 >
-                  <div className="relative z-20 h-full p-8 flex flex-col justify-center">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="w-4 h-4 text-theme-primary fill-theme-primary" />
-                      <span className="text-theme-primary font-mono tracking-widest text-xs uppercase font-extrabold">Next-Gen Grooming Solutions</span>
+                  {/* Background Image with Theme-Responsive Asset & Hover Zoom */}
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-105 pointer-events-none"
+                    style={{
+                      backgroundImage: `url('${
+                        theme === 'light' 
+                          ? (cmsData.hero_section?.banner_light || 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&q=80&w=1400')
+                          : (cmsData.hero_section?.banner || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=1400')
+                      }')`
+                    }}
+                  />
+
+                  {/* Theme Gradient Backdrop Filter */}
+                  <div 
+                    className={`absolute inset-0 pointer-events-none transition-colors duration-500 ${
+                      theme === 'light'
+                        ? 'bg-gradient-to-r from-white/95 via-slate-50/90 to-white/40'
+                        : 'bg-gradient-to-r from-black/95 via-zinc-950/85 to-black/30'
+                    }`}
+                  />
+
+                  {/* Ambient Light Accent Glow */}
+                  <div className={`absolute top-0 right-1/4 w-72 h-72 rounded-full blur-3xl pointer-events-none transition-opacity duration-500 ${
+                    theme === 'light' ? 'bg-amber-300/20 opacity-70' : 'bg-yellow-500/10 opacity-50'
+                  }`} />
+
+                  {/* Banner Content Layout */}
+                  <div className="relative z-10 max-w-xl space-y-3.5">
+                    {/* Top Interactive Feature Badge */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-mono font-bold uppercase tracking-wider transition-all duration-300 ${
+                        theme === 'light'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 shadow-sm'
+                          : 'bg-[#D4AF37]/15 border-[#D4AF37]/30 text-theme-primary shadow-lg shadow-yellow-500/5'
+                      }`}>
+                        <Sparkles className={`w-3.5 h-3.5 ${theme === 'light' ? 'text-amber-600 fill-amber-500' : 'text-theme-primary fill-theme-primary'} animate-pulse`} />
+                        <span>Next-Gen Grooming Solutions</span>
+                      </div>
+
+                      <div className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[10px] font-semibold ${
+                        theme === 'light' ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-white/5 border-white/10 text-zinc-400'
+                      }`}>
+                        <MapPin className="w-3 h-3 text-amber-500" />
+                        <span>{shops.length} Salons Live</span>
+                      </div>
                     </div>
                     
-                    <h1 className="text-3xl font-extrabold max-w-md leading-tight text-white mb-3">
-                      {cmsData.hero_section?.title || 'StyleSlot Premium Booking Marketplace'}
+                    {/* Main Title */}
+                    <h1 className={`text-2xl sm:text-3xl font-extrabold leading-tight tracking-tight transition-colors duration-300 ${
+                      theme === 'light' ? 'text-slate-900' : 'text-white'
+                    }`}>
+                      {cmsData.hero_section?.title || 'Elite Grooming for the Modern Gentleman'}
                     </h1>
                     
-                    <p className="text-xs text-zinc-300 max-w-sm leading-relaxed mb-4">
-                      {cmsData.hero_section?.subtitle || 'Instantly book nearby luxury barbershops or authorize premium house call visits.'}
+                    {/* Subtitle */}
+                    <p className={`text-xs sm:text-sm leading-relaxed max-w-lg transition-colors duration-300 ${
+                      theme === 'light' ? 'text-slate-600 font-medium' : 'text-zinc-300 font-normal'
+                    }`}>
+                      {cmsData.hero_section?.subtitle || 'Instantly book nearby luxury barbershops, scan face symmetry, or authorize premium house call visits.'}
                     </p>
 
-                    <div className="flex gap-3">
+                    {/* Interactive Action Triggers */}
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
                       <button 
                         onClick={() => setActiveCustomerTab('ai-lab')}
-                        className="bg-theme-primary text-zinc-950 px-5 py-2 rounded-full font-bold text-xs hover:scale-105 transition-all shadow-md cursor-pointer"
+                        className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all duration-300 flex items-center gap-2 cursor-pointer shadow-lg hover:scale-105 active:scale-95 ${
+                          theme === 'light'
+                            ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-amber-500/25 hover:shadow-amber-500/40'
+                            : 'bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-200 text-zinc-950 shadow-yellow-500/10'
+                        }`}
                       >
-                        Scan Face Symmetry
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Scan Face Symmetry</span>
                       </button>
                       
                       <button 
                         onClick={handleEmergencyInstapassMatch}
-                        className="bg-red-500/10 text-red-400 border border-red-500/40 px-5 py-2 rounded-full font-bold text-xs hover:bg-red-500/20 transition-all flex items-center gap-1 cursor-pointer animate-pulse"
+                        className={`px-4 py-2.5 rounded-xl font-bold text-xs transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 ${
+                          theme === 'light'
+                            ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 shadow-sm'
+                            : 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20'
+                        }`}
                       >
-                        <Zap className="w-3.5 h-3.5 fill-red-400" /> Emergency Instapass
+                        <Zap className="w-3.5 h-3.5 fill-current animate-bounce" />
+                        <span>Emergency Instapass</span>
+                      </button>
+
+                      <button 
+                        onClick={() => setActiveCustomerTab('nearby')}
+                        className={`hidden sm:flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                          theme === 'light'
+                            ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm'
+                            : 'bg-zinc-900/80 border border-white/10 text-zinc-300 hover:bg-zinc-800'
+                        }`}
+                      >
+                        <Navigation className="w-3 h-3 text-amber-500" />
+                        <span>Radar Salons</span>
                       </button>
                     </div>
                   </div>
