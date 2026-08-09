@@ -1560,6 +1560,7 @@ export default function App() {
                     userCoordinates={userCoordinates}
                     userAddress={userAddress}
                     onMapClick={() => setIsMapModalOpen(true)}
+                    theme={theme}
                   />
                 </div>
                 
@@ -1812,30 +1813,42 @@ export default function App() {
       )}
 
       {/* Standard Footer layout bar */}
-      <footer className="w-full bg-[#050505] border-t border-white/5 py-8 text-center text-zinc-600 text-[11px] relative z-10">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-left space-y-1">
-            <h5 className="font-bold text-zinc-300 text-xs tracking-wider">{cmsData.theme_settings?.business_name} Network</h5>
-            <p className="text-[10px] text-zinc-500">Developed by Poojith Sai</p>
-          </div>
-          <div className="flex items-center gap-2">
+      <footer className={`w-full ${theme === 'light' ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-[#050505] border-white/5 text-zinc-600'} border-t py-8 text-center text-[11px] relative z-10 transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center gap-4">
+          
+          {/* Action Buttons Row */}
+          <div className="flex items-center gap-3">
             <button 
               onClick={toggleTheme}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white rounded-lg transition text-xs cursor-pointer"
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer shadow-sm ${
+                theme === 'dark' 
+                  ? 'bg-zinc-900 border-zinc-800 text-yellow-400 hover:text-white hover:bg-zinc-800' 
+                  : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-50'
+              }`}
             >
               {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-slate-800" />}
               <span>{theme === 'dark' ? 'Light Theme' : 'Dark Theme'}</span>
             </button>
+
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white rounded-lg transition text-xs cursor-pointer"
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer shadow-sm ${
+                theme === 'dark'
+                  ? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                  : 'bg-white border-slate-300 text-slate-700 hover:text-slate-900'
+              }`}
             >
               <LogOut className="w-3.5 h-3.5" /> Sign Out
             </button>
           </div>
-        </div>
-        <div className="pt-4 border-t border-white/5 mt-4 max-w-7xl mx-auto px-4 text-center">
-          <p>&copy; {new Date().getFullYear()} {cmsData.theme_settings?.business_name}. All rights reserved.</p>
+
+          {/* Centered Middle Below: StyleSlot Network & Developer Credits */}
+          <div className="text-center space-y-1 pt-2 border-t border-white/5 w-full max-w-md mx-auto">
+            <h5 className="font-extrabold text-xs tracking-wider text-theme-primary">{cmsData.theme_settings?.business_name || 'StyleSlot'} Network</h5>
+            <p className={`text-xs font-bold ${theme === 'light' ? 'text-slate-700' : 'text-zinc-300'}`}>Developed by Poojith Sai Chand</p>
+            <p className={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-zinc-500'}`}>&copy; {new Date().getFullYear()} {cmsData.theme_settings?.business_name || 'StyleSlot'}. All rights reserved.</p>
+          </div>
+
         </div>
       </footer>
 
