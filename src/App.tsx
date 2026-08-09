@@ -19,7 +19,8 @@ import LoginScreen from './components/LoginScreen';
 import { 
   Search, SlidersHorizontal, MapPin, Sparkles, Navigation, Heart, 
   Compass, BadgePercent, Star, ShieldCheck, Ticket, 
-  DollarSign, Activity, Bell, CalendarDays, Zap, HelpCircle, ChevronRight, LogOut 
+  DollarSign, Activity, Bell, CalendarDays, Zap, HelpCircle, ChevronRight, LogOut,
+  Sun, Moon
 } from 'lucide-react';
 
 export default function App() {
@@ -83,6 +84,15 @@ export default function App() {
   // App UI Navigation States
   const [currentRole, setCurrentRole] = useState<'customer' | 'owner' | 'barber' | 'admin'>('customer');
   const [activeCustomerTab, setActiveCustomerTab] = useState<'explore' | 'nearby' | 'bookings' | 'ai-lab'>('explore');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('styleslot_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    localStorage.setItem('styleslot_theme', nextTheme);
+  };
 
   // Admin route & authentication states
   const [isAdminPath, setIsAdminPath] = useState<boolean>(() => {
@@ -701,9 +711,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white font-sans flex flex-col overflow-x-hidden relative pb-16">
+    <div className={`min-h-screen ${theme === 'light' ? 'theme-light bg-slate-50 text-slate-900' : 'bg-[#0A0A0A] text-white'} font-sans flex flex-col overflow-x-hidden relative pb-16 transition-colors duration-300`}>
       
-      {/* Inject custom variables for CMS custom styles */}
+      {/* Inject custom variables for CMS custom styles and Theme */}
       <style dangerouslySetInnerHTML={{__html: `
         :root {
           --primary-color: ${cmsData.theme_settings?.primary_color || '#D4AF37'};
@@ -713,10 +723,98 @@ export default function App() {
         .text-theme-primary { color: var(--primary-color) !important; }
         .border-theme-primary { border-color: var(--primary-color) !important; }
         .bg-theme-secondary { background-color: var(--secondary-color) !important; }
+
+        /* Light Mode Comprehensive Theme Overrides */
+        .theme-light {
+          background-color: #F8FAFC !important;
+          color: #0F172A !important;
+        }
+        .theme-light .bg-\[\#0A0A0A\],
+        .theme-light .bg-\[\#050505\],
+        .theme-light .bg-\[\#0F0F11\]\/90,
+        .theme-light .bg-zinc-950,
+        .theme-light .bg-zinc-950\/80,
+        .theme-light .bg-zinc-950\/40,
+        .theme-light .bg-zinc-900,
+        .theme-light .bg-zinc-900\/90,
+        .theme-light .bg-zinc-900\/80,
+        .theme-light .bg-black,
+        .theme-light .bg-black\/80,
+        .theme-light .bg-black\/60,
+        .theme-light .bg-black\/40 {
+          background-color: #FFFFFF !important;
+        }
+        .theme-light .bg-white\/5,
+        .theme-light .bg-white\/10 {
+          background-color: #F1F5F9 !important;
+        }
+        .theme-light .border-white\/5,
+        .theme-light .border-white\/10,
+        .theme-light .border-zinc-800,
+        .theme-light .border-zinc-900 {
+          border-color: #E2E8F0 !important;
+        }
+        .theme-light h1, .theme-light h2, .theme-light h3, .theme-light h4, .theme-light h5,
+        .theme-light .text-white {
+          color: #0F172A !important;
+        }
+        .theme-light .text-zinc-100,
+        .theme-light .text-zinc-200 {
+          color: #1E293B !important;
+        }
+        .theme-light .text-zinc-300,
+        .theme-light .text-zinc-400 {
+          color: #475569 !important;
+        }
+        .theme-light .text-zinc-500,
+        .theme-light .text-zinc-600 {
+          color: #64748B !important;
+        }
+        .theme-light input,
+        .theme-light textarea,
+        .theme-light select {
+          background-color: #FFFFFF !important;
+          color: #0F172A !important;
+          border-color: #CBD5E1 !important;
+        }
+        .theme-light input::placeholder,
+        .theme-light textarea::placeholder {
+          color: #94A3B8 !important;
+        }
+        .theme-light footer {
+          background-color: #F1F5F9 !important;
+          border-color: #E2E8F0 !important;
+        }
       `}} />
 
       {/* Visual background glows */}
       <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] bg-[#D4AF37] opacity-[0.06] rounded-full blur-[130px] pointer-events-none" />
+
+      {/* Floating Theme Switcher Button */}
+      <div className="fixed top-4 right-4 z-50">
+        <button
+          id="btn-theme-toggle"
+          onClick={toggleTheme}
+          className={`px-3.5 py-2 rounded-full border shadow-xl backdrop-blur-md transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+            theme === 'dark' 
+              ? 'bg-zinc-900/90 border-yellow-500/30 text-yellow-400 hover:bg-zinc-800 hover:scale-105' 
+              : 'bg-white/95 border-slate-300 text-slate-800 hover:bg-slate-50 hover:scale-105 shadow-slate-300/50'
+          }`}
+          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+        >
+          {theme === 'dark' ? (
+            <>
+              <Sun className="w-4 h-4 text-yellow-400" />
+              <span className="text-xs font-bold text-yellow-400">Light Mode</span>
+            </>
+          ) : (
+            <>
+              <Moon className="w-4 h-4 text-slate-800" />
+              <span className="text-xs font-bold text-slate-800">Dark Mode</span>
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Floating alert notifications banner */}
       {alertNotification && (
@@ -1517,24 +1615,29 @@ export default function App() {
 
       {/* Standard Footer layout bar */}
       <footer className="w-full bg-[#050505] border-t border-white/5 py-8 text-center text-zinc-600 text-[11px] relative z-10">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="text-left space-y-1">
             <h5 className="font-bold text-zinc-300 text-xs tracking-wider">{cmsData.theme_settings?.business_name} Network</h5>
             <p className="text-[10px] text-zinc-500">Developed by Poojith Sai</p>
           </div>
-          <div className="text-center md:text-right space-y-1 font-mono text-[10px] text-zinc-500">
-            <p>{cmsData.contact_details?.phone} &bull; {cmsData.contact_details?.email}</p>
-            <p>{cmsData.contact_details?.address}</p>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={toggleTheme}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white rounded-lg transition text-xs cursor-pointer"
+            >
+              {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-slate-800" />}
+              <span>{theme === 'dark' ? 'Light Theme' : 'Dark Theme'}</span>
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white rounded-lg transition text-xs cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
+            </button>
           </div>
         </div>
-        <div className="pt-6 border-t border-white/5 mt-6 flex justify-between items-center max-w-7xl mx-auto px-4">
+        <div className="pt-4 border-t border-white/5 mt-4 max-w-7xl mx-auto px-4 text-center">
           <p>&copy; {new Date().getFullYear()} {cmsData.theme_settings?.business_name}. All rights reserved.</p>
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white rounded-lg transition"
-          >
-            <LogOut className="w-3.5 h-3.5" /> Sign Out
-          </button>
         </div>
       </footer>
 
