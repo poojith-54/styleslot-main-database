@@ -298,9 +298,9 @@ export const mockCmsSettings: Record<string, any> = {
     image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=600'
   },
   contact_details: {
-    phone: 'Podalkur Arokya Milk',
-    email: 'contact@arokyamilk.com',
-    address: 'Andhra Pradesh, India',
+    phone: '+91 98765 43210',
+    email: 'contact@styleslot.com',
+    address: 'StyleSlot Hub, India',
     working_hours: 'Mon - Sun: 09:00 AM - 10:00 PM'
   },
   social_links: {

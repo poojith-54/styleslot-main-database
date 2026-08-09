@@ -6,7 +6,6 @@ import {
 } from './types';
 
 // Components
-import RoleSwitcher from './components/RoleSwitcher';
 import MockMap from './components/MockMap';
 import AiStylingAssistant from './components/AiStylingAssistant';
 import GoogleMapComponent from './components/GoogleMapComponent';
@@ -56,9 +55,9 @@ export default function App() {
       image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=600'
     },
     contact_details: {
-      phone: 'Podalkur Arokya Milk',
-      email: 'contact@arokyamilk.com',
-      address: 'Andhra Pradesh, India',
+      phone: '+91 98765 43210',
+      email: 'contact@styleslot.com',
+      address: 'StyleSlot Hub, India',
       working_hours: 'Mon - Sun: 09:00 AM - 10:00 PM'
     },
     social_links: {
@@ -83,7 +82,7 @@ export default function App() {
 
   // App UI Navigation States
   const [currentRole, setCurrentRole] = useState<'customer' | 'owner' | 'barber' | 'admin'>('customer');
-  const [activeCustomerTab, setActiveCustomerTab] = useState<'explore' | 'nearby' | 'bookings' | 'vip' | 'ai-lab'>('explore');
+  const [activeCustomerTab, setActiveCustomerTab] = useState<'explore' | 'nearby' | 'bookings' | 'ai-lab'>('explore');
 
   // Admin route & authentication states
   const [isAdminPath, setIsAdminPath] = useState<boolean>(() => {
@@ -718,16 +717,6 @@ export default function App() {
 
       {/* Visual background glows */}
       <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] bg-[#D4AF37] opacity-[0.06] rounded-full blur-[130px] pointer-events-none" />
-      
-      {/* Persistent global Role Switcher simulator */}
-      {profile && !isAdminPath && (
-        <RoleSwitcher 
-          profile={profile} 
-          currentRole={currentRole} 
-          onRoleChange={handleRoleChange} 
-          onTopUp={handleTopUp} 
-        />
-      )}
 
       {/* Floating alert notifications banner */}
       {alertNotification && (
@@ -947,7 +936,6 @@ export default function App() {
                   { id: 'explore', label: 'Explore Shops' },
                   { id: 'nearby', label: 'Nearby Salons' },
                   { id: 'bookings', label: 'Queue & History' },
-                  { id: 'vip', label: 'VIP Passports' },
                   { id: 'ai-lab', label: 'AI Grooming Lab' }
                 ].map(tab => (
                   <button
@@ -1244,60 +1232,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* TAB CONTENT: VIP ACCREDITATION */}
-              {activeCustomerTab === 'vip' && cmsData.homepage_sections?.show_memberships && (
-                <div className="space-y-6">
-                  <div className="text-center max-w-sm mx-auto space-y-1">
-                    <h3 className="text-lg font-bold text-white">StyleSlot VIP Member Club</h3>
-                    <p className="text-xs text-zinc-400">Unlock absolute queue prioritization, complimentary styling items, and home delivery fee exemptions.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {memberships.map((mem) => (
-                      <div 
-                        key={mem.id} 
-                        className={`p-6 rounded-3xl border flex flex-col justify-between h-80 relative overflow-hidden bg-zinc-950/80 ${
-                          mem.id === 'mem-2' 
-                            ? 'border-yellow-500/50 bg-gradient-to-b from-zinc-950 to-yellow-500/5 shadow-yellow-500/5 shadow-2xl' 
-                            : 'border-white/5'
-                        }`}
-                      >
-                        {mem.id === 'mem-2' && (
-                          <span className="absolute top-3 right-3 text-[8px] bg-theme-primary text-zinc-950 font-mono font-bold px-2 py-0.5 rounded-full">POPULAR</span>
-                        )}
-                        <div>
-                          <h4 className="text-sm font-bold text-white">{mem.title}</h4>
-                          <div className="flex items-baseline gap-1 mt-2 border-b border-white/5 pb-3">
-                            <span className="text-2xl font-mono font-bold text-yellow-500">₹{mem.price}</span>
-                            <span className="text-zinc-500 text-[10px]">/{mem.period === 'monthly' ? 'month' : 'year'}</span>
-                          </div>
-                          
-                          <ul className="mt-4 space-y-2">
-                            {mem.benefits.map((b, i) => (
-                              <li key={i} className="text-[10px] text-zinc-400 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] shrink-0" />
-                                <span>{b}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <button 
-                          onClick={() => triggerToast(`VIP Subscribed: ${mem.title}! Details synced to sandbox wallet.`, 'success')}
-                          className={`w-full py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                            mem.id === 'mem-2' 
-                              ? 'bg-theme-primary text-zinc-950 hover:bg-yellow-600' 
-                              : 'bg-zinc-900 border border-white/10 text-white hover:bg-zinc-800'
-                          }`}
-                        >
-                          Acquire VIP Access
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* TAB CONTENT: AI STYLING LAB */}
               {activeCustomerTab === 'ai-lab' && (
                 <AiStylingAssistant 
@@ -1353,27 +1287,6 @@ export default function App() {
                   
                   <div className="w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden">
                     <div className="bg-[#D4AF37] h-full w-2/3 rounded-full animate-progress" />
-                  </div>
-                </div>
-              )}
-
-              {/* Dynamic CMS Testimonials Section */}
-              {cmsData.homepage_sections?.show_testimonials && cmsData.testimonials?.length > 0 && (
-                <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 space-y-4">
-                  <h4 className="text-xs uppercase font-mono tracking-widest text-zinc-400">Customer Testimonials</h4>
-                  <div className="space-y-4">
-                    {cmsData.testimonials.map((t: any, i: number) => (
-                      <div key={i} className="space-y-2 border-b border-white/5 pb-3 last:border-0 last:pb-0">
-                        <p className="text-xs text-zinc-300 italic">"{t.comment}"</p>
-                        <div className="flex items-center gap-2">
-                          <img src={t.avatar} alt={t.name} className="w-6 h-6 rounded-full object-cover grayscale" />
-                          <div>
-                            <p className="text-[10px] font-bold text-white">{t.name}</p>
-                            <p className="text-[8px] text-zinc-500">{t.role}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
               )}
@@ -1607,10 +1520,10 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-left space-y-1">
             <h5 className="font-bold text-zinc-300 text-xs tracking-wider">{cmsData.theme_settings?.business_name} Network</h5>
-            <p className="text-[10px] text-zinc-500">Developed by Poojith Sai &bull; Powered by Supabase & Gemini AI</p>
+            <p className="text-[10px] text-zinc-500">Developed by Poojith Sai</p>
           </div>
           <div className="text-center md:text-right space-y-1 font-mono text-[10px] text-zinc-500">
-            <p>Concierge: {cmsData.contact_details?.phone} &bull; {cmsData.contact_details?.email}</p>
+            <p>{cmsData.contact_details?.phone} &bull; {cmsData.contact_details?.email}</p>
             <p>{cmsData.contact_details?.address}</p>
           </div>
         </div>

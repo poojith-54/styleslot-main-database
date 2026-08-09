@@ -82,11 +82,6 @@ export default function CheckoutWizard({ shop, coupons, walletBalance, onBooking
       return;
     }
 
-    if (walletBalance < finalPrice) {
-      setApiError(`Insufficient wallet funds! This booking costs ₹${finalPrice.toFixed(2)}, but you only have ₹${walletBalance.toFixed(2)}. Please add top-up funds using the wallet button on upper right first!`);
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -372,7 +367,7 @@ export default function CheckoutWizard({ shop, coupons, walletBalance, onBooking
               disabled={isSubmitting}
               className="px-6 py-2.5 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-200 text-zinc-950 font-bold rounded-xl text-xs hover:opacity-95 transition flex items-center justify-center gap-1.5 flex-1 sm:flex-none cursor-pointer"
             >
-              {isSubmitting ? 'Deducting Wallet...' : `Confirm & Pay ₹${finalPrice.toFixed(2)}`}
+              {isSubmitting ? 'Confirming Appointment...' : `Confirm & Pay ₹${finalPrice.toFixed(2)}`}
             </button>
           </div>
         </div>

@@ -53,13 +53,6 @@ export default function AdminConsole({
   const [newQuestion, setNewQuestion] = useState('');
   const [newAnswer, setNewAnswer] = useState('');
 
-  // Testimonials local list
-  const [testimonialList, setTestimonialList] = useState<Array<{name: string, role: string, comment: string, avatar: string}>>(cmsData.testimonials || []);
-  const [newTestName, setNewTestName] = useState('');
-  const [newTestRole, setNewTestRole] = useState('');
-  const [newTestComment, setNewTestComment] = useState('');
-  const [newTestAvatar, setNewTestAvatar] = useState('');
-
   // Save specific CMS section
   const handleSaveCmsSection = async (sectionKey: string, payload: any) => {
     setSavingCms(true);
@@ -86,32 +79,6 @@ export default function AdminConsole({
     const updated = faqList.filter((_, i) => i !== idx);
     setFaqList(updated);
     await handleSaveCmsSection('faqs', updated);
-  };
-
-  // Testimonials helpers
-  const handleAddTestimonial = async () => {
-    if (!newTestName.trim() || !newTestComment.trim()) return;
-    const updated = [
-      ...testimonialList, 
-      { 
-        name: newTestName, 
-        role: newTestRole || 'Client', 
-        comment: newTestComment, 
-        avatar: newTestAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=80' 
-      }
-    ];
-    setTestimonialList(updated);
-    setNewTestName('');
-    setNewTestRole('');
-    setNewTestComment('');
-    setNewTestAvatar('');
-    await handleSaveCmsSection('testimonials', updated);
-  };
-
-  const handleRemoveTestimonial = async (idx: number) => {
-    const updated = testimonialList.filter((_, i) => i !== idx);
-    setTestimonialList(updated);
-    await handleSaveCmsSection('testimonials', updated);
   };
 
   // Analytics Metrics
@@ -152,7 +119,7 @@ export default function AdminConsole({
           { id: 'users', name: 'User Directory', icon: Users },
           { id: 'shops', name: 'Salon Registry', icon: Building },
           { id: 'cms', name: 'CMS Website Content', icon: Settings2 },
-          { id: 'promotions', name: 'Coupons & VIP', icon: Tag }
+          { id: 'promotions', name: 'Marketing Coupons', icon: Tag }
         ].map((t) => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;
@@ -278,7 +245,7 @@ export default function AdminConsole({
                     </span>
                   </div>
                   <p className="text-[10px] text-zinc-400 font-mono">{u.email} &bull; {u.phone || 'No phone'}</p>
-                  <p className="text-[10px] text-zinc-500 font-mono">Wallet: <span className="text-yellow-500 font-bold">₹{Number(u.walletBalance).toFixed(2)}</span> &bull; Loyalty Points: {u.loyaltyPoints} pts</p>
+                  <p className="text-[10px] text-zinc-500 font-mono">Loyalty Points: <span className="text-yellow-500 font-bold">{u.loyaltyPoints} pts</span></p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -641,97 +608,21 @@ export default function AdminConsole({
             </div>
           </div>
 
-          {/* Testimonial Manager */}
-          <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 text-white space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-white/5">
-              <Star className="w-5 h-5 text-yellow-500" />
-              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400">Testimonials Slider Curation</h3>
-            </div>
-
-            {/* List current */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {testimonialList.map((t, i) => (
-                <div key={i} className="p-4 bg-zinc-900 border border-white/5 rounded-xl flex justify-between items-start gap-4">
-                  <div className="flex gap-3">
-                    <img src={t.avatar} alt={t.name} className="w-9 h-9 rounded-full object-cover grayscale shrink-0 border border-white/10" />
-                    <div>
-                      <h5 className="text-xs font-bold text-white">{t.name}</h5>
-                      <span className="text-[9px] text-yellow-500/70 font-mono">{t.role}</span>
-                      <p className="text-[10px] text-zinc-400 mt-1 italic">"{t.comment}"</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => handleRemoveTestimonial(i)}
-                    className="p-1 bg-red-500/10 hover:bg-red-500/30 text-red-400 rounded-md transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Add test */}
-            <div className="p-4 bg-black/40 border border-zinc-800 rounded-2xl space-y-3">
-              <h4 className="text-xs font-bold text-white">Add Customer Testimonial Quote</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  placeholder="Customer Name"
-                  value={newTestName}
-                  onChange={(e) => setNewTestName(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Designated Role (e.g. VIP client)"
-                  value={newTestRole}
-                  onChange={(e) => setNewTestRole(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Avatar Image URL (Optional)"
-                  value={newTestAvatar}
-                  onChange={(e) => setNewTestAvatar(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg col-span-2 px-3 py-2 text-xs text-white focus:outline-none"
-                />
-                <textarea
-                  placeholder="Client review comment"
-                  value={newTestComment}
-                  onChange={(e) => setNewTestComment(e.target.value)}
-                  rows={2}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg col-span-2 px-3 py-2 text-xs text-white focus:outline-none resize-none"
-                />
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleAddTestimonial}
-                  className="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add Quote
-                </button>
-              </div>
-            </div>
-
-          </div>
-
         </div>
       )}
 
-      {/* 5. PROMOTIONS & VIP TABS */}
+      {/* 5. PROMOTIONS & MARKETING COUPONS */}
       {activeTab === 'promotions' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fadeIn">
-          
+        <div className="space-y-6 animate-fadeIn">
           {/* Coupon codes list */}
           <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 text-white space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
               <Tag className="w-4 h-4 text-yellow-500" /> Active Marketing Coupons ({coupons.length})
             </h3>
             
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {coupons.map((c) => (
-                <div key={c.code} className="p-3.5 bg-zinc-900 border border-white/5 rounded-2xl flex justify-between items-center">
+                <div key={c.code} className="p-4 bg-zinc-900 border border-white/5 rounded-2xl flex justify-between items-center">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-yellow-400 text-xs tracking-wider bg-yellow-500/10 border border-yellow-500/30 px-2 py-0.5 rounded-lg">{c.code}</span>
@@ -744,32 +635,6 @@ export default function AdminConsole({
               ))}
             </div>
           </div>
-
-          {/* Membership structures */}
-          <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 text-white space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-yellow-500" /> Premium VIP Memberships ({memberships.length})
-            </h3>
-
-            <div className="space-y-3">
-              {memberships.map((m) => (
-                <div key={m.id} className="p-4 bg-zinc-900 border border-white/5 rounded-2xl">
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <h4 className="text-xs font-bold text-white">{m.title}</h4>
-                    <span className="text-xs font-mono font-bold text-yellow-400">₹{m.price}/{m.period === 'monthly' ? 'mo' : 'yr'}</span>
-                  </div>
-                  <ul className="mt-2 space-y-1">
-                    {(m.benefits || []).map((b, idx) => (
-                      <li key={idx} className="text-[10px] text-zinc-400 flex items-center gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-yellow-500" /> {b}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-
         </div>
       )}
 
