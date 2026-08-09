@@ -1227,25 +1227,38 @@ export default function App() {
               </div>
 
               {/* MAIN CONTENT TAB SELECTORS */}
-              <div className="flex border-b border-white/5 bg-zinc-950/40 rounded-xl p-1 gap-1">
+              <div className={`flex border rounded-2xl p-1 gap-1 transition-all ${
+                theme === 'light' 
+                  ? 'bg-slate-100 border-slate-200 shadow-sm' 
+                  : 'bg-zinc-950/60 border-white/5'
+              }`}>
                 {[
-                  { id: 'explore', label: 'Explore Shops' },
-                  { id: 'nearby', label: 'Nearby Salons' },
-                  { id: 'bookings', label: 'Queue & History' },
-                  { id: 'ai-lab', label: 'AI Grooming Lab' }
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveCustomerTab(tab.id as any)}
-                    className={`flex-1 py-2 text-center text-xs font-bold tracking-wide rounded-lg transition-all ${
-                      activeCustomerTab === tab.id 
-                        ? 'bg-zinc-900 border border-white/10 text-theme-primary' 
-                        : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+                  { id: 'explore', label: 'Explore Shops', icon: Compass },
+                  { id: 'nearby', label: 'Nearby Salons', icon: Navigation },
+                  { id: 'bookings', label: 'Queue & History', icon: CalendarDays },
+                  { id: 'ai-lab', label: 'AI Grooming Lab', icon: Sparkles }
+                ].map(tab => {
+                  const Icon = tab.icon;
+                  const isActive = activeCustomerTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveCustomerTab(tab.id as any)}
+                      className={`flex-1 py-2.5 text-center text-xs font-bold tracking-wide rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        isActive 
+                          ? (theme === 'light' 
+                              ? 'bg-white border border-slate-200 text-amber-700 shadow-sm font-extrabold' 
+                              : 'bg-zinc-900 border border-white/10 text-theme-primary shadow-md')
+                          : (theme === 'light' 
+                              ? 'text-slate-600 hover:text-slate-900 hover:bg-white/50' 
+                              : 'text-zinc-400 hover:text-white hover:bg-zinc-900/40')
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* TAB CONTENT: EXPLORE GRID */}
@@ -1253,21 +1266,21 @@ export default function App() {
                 <div className="space-y-6">
                   
                   {/* Fine Tuning Search Filters Bar */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
+                  <div className={`${theme === 'light' ? 'bg-white border-slate-200 shadow-sm' : 'bg-white/5 border-white/10'} border rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4`}>
                     <div className="relative flex-1 w-full">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                      <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${theme === 'light' ? 'text-slate-400' : 'text-zinc-500'}`} />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search salon names, features (Espresso, AC) or specialties..."
-                        className="w-full bg-zinc-950 border border-zinc-900 rounded-xl py-2 pl-10 pr-4 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-yellow-500/50"
+                        className={`w-full ${theme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-amber-500' : 'bg-zinc-950 border-zinc-900 text-zinc-100 placeholder:text-zinc-600 focus:border-yellow-500/50'} border rounded-xl py-2 pl-10 pr-4 text-xs focus:outline-none`}
                       />
                     </div>
 
                     <div className="flex items-center gap-4 w-full md:w-auto shrink-0">
                       <div className="flex items-center gap-2 flex-1 md:flex-initial">
-                        <span className="text-[10px] font-mono text-zinc-500 uppercase">Within:</span>
+                        <span className={`text-[10px] font-mono ${theme === 'light' ? 'text-slate-500' : 'text-zinc-500'} uppercase font-bold`}>Within:</span>
                         <input
                           type="range"
                           min="1"
@@ -1277,7 +1290,7 @@ export default function App() {
                           onChange={(e) => setMaxDistance(parseFloat(e.target.value))}
                           className="w-24 accent-yellow-500"
                         />
-                        <span className="text-[10px] font-mono text-theme-primary font-bold whitespace-nowrap">{maxDistance} km</span>
+                        <span className={`text-[10px] font-mono ${theme === 'light' ? 'text-slate-700' : 'text-theme-primary'} font-bold whitespace-nowrap`}>{maxDistance} km</span>
                       </div>
 
                       <label className="flex items-center gap-2 select-none shrink-0 cursor-pointer text-xs">
@@ -1287,14 +1300,14 @@ export default function App() {
                           onChange={(e) => setOnlyHomeService(e.target.checked)}
                           className="w-3.5 h-3.5 accent-yellow-500"
                         />
-                        <span className="text-[10px] font-mono text-zinc-400 uppercase">Home Service Calls</span>
+                        <span className={`text-[10px] font-mono ${theme === 'light' ? 'text-slate-600' : 'text-zinc-400'} uppercase font-bold`}>Home Service Calls</span>
                       </label>
                     </div>
                   </div>
 
                   {/* Listings Grid */}
                   {filteredShops.length === 0 ? (
-                    <div className="text-center py-12 bg-white/5 border border-white/5 rounded-2xl text-zinc-500 text-xs">
+                    <div className={`text-center py-12 ${theme === 'light' ? 'bg-white border-slate-200 text-slate-500' : 'bg-white/5 border-white/5 text-zinc-500'} border rounded-2xl text-xs`}>
                       No barber shops match your filters. Try resetting search parameters.
                     </div>
                   ) : (
@@ -1302,19 +1315,19 @@ export default function App() {
                       {filteredShops.map((shop) => (
                         <div 
                           key={shop.id}
-                          className="bg-[#18181B]/40 border border-white/10 rounded-2xl overflow-hidden hover:border-yellow-500/40 transition-all group flex flex-col shadow-lg backdrop-blur-md"
+                          className={`${theme === 'light' ? 'bg-white border-slate-200 shadow-md shadow-slate-200/50 hover:border-amber-400' : 'bg-[#18181B]/40 border-white/10 hover:border-yellow-500/40 shadow-lg'} border rounded-2xl overflow-hidden transition-all group flex flex-col backdrop-blur-md`}
                         >
                           {/* Banner */}
-                          <div className="h-32 bg-zinc-900 relative">
+                          <div className={`h-32 ${theme === 'light' ? 'bg-slate-100' : 'bg-zinc-900'} relative`}>
                             <img 
                               src={shop.image} 
                               alt={shop.name} 
-                              className="w-full h-full object-cover grayscale transition-transform group-hover:scale-105 duration-500" 
+                              className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" 
                             />
                             
                             <div className="absolute top-3 left-3 flex gap-1">
                               {shop.isVerified && (
-                                <span className="bg-emerald-500 text-zinc-950 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow">
+                                <span className="bg-emerald-500 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow">
                                   VERIFIED
                                 </span>
                               )}
@@ -1338,31 +1351,36 @@ export default function App() {
 
                           <div className="p-4 flex-1 flex flex-col justify-between">
                             <div>
-                              <div className="flex justify-between items-start gap-2">
-                                <h3 className="font-bold text-white text-sm group-hover:text-yellow-400 transition">{shop.name}</h3>
-                                <div className="flex items-center text-yellow-500 font-bold text-xs shrink-0">
-                                  ★ {shop.rating}
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className={`font-extrabold text-sm ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{shop.name}</h4>
+                                  <p className={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-zinc-400'} flex items-center gap-1 mt-0.5`}>
+                                    <MapPin className="w-3 h-3 text-amber-500" /> {shop.address}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1 bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-lg text-yellow-500 font-mono text-xs font-bold shrink-0">
+                                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                  <span>{shop.rating}</span>
                                 </div>
                               </div>
-                              <p className="text-[11px] text-zinc-400 mt-1 truncate">{shop.address}</p>
-                              
-                              <div className="flex flex-wrap gap-1 mt-2.5">
+
+                              <div className="flex flex-wrap gap-1 mt-3">
                                 {shop.categories.slice(0, 3).map(cat => (
-                                  <span key={cat} className="text-[8px] uppercase tracking-wide bg-zinc-900 border border-white/5 text-zinc-400 px-1.5 py-0.5 rounded font-mono">
+                                  <span key={cat} className={`text-[8px] uppercase tracking-wide ${theme === 'light' ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-zinc-900 border-white/5 text-zinc-400'} border px-1.5 py-0.5 rounded font-mono font-semibold`}>
                                     {cat}
                                   </span>
                                 ))}
                               </div>
                             </div>
 
-                            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between z-10">
-                              <span className="text-[10px] text-zinc-500 font-mono">
+                            <div className={`mt-4 pt-3 border-t ${theme === 'light' ? 'border-slate-100' : 'border-white/5'} flex items-center justify-between z-10`}>
+                              <span className={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-zinc-500'} font-mono`}>
                                 📍 {shop.distance} km nearby &bull; {shop.workingHours}
                               </span>
                               
                               <button
                                 onClick={() => setSelectedShop(shop)}
-                                className="text-theme-primary font-bold text-xs uppercase tracking-wider flex items-center gap-1 hover:text-yellow-300 cursor-pointer"
+                                className="text-theme-primary font-bold text-xs uppercase tracking-wider flex items-center gap-1 hover:text-yellow-600 cursor-pointer"
                               >
                                 View Rates <ChevronRight className="w-3.5 h-3.5" />
                               </button>
@@ -1374,13 +1392,13 @@ export default function App() {
                   )}
 
                   {/* CMS About Section */}
-                  <div className="p-8 rounded-3xl border border-white/5 bg-gradient-to-br from-zinc-950 via-zinc-900/60 to-black grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                  <div className={`p-8 rounded-3xl border ${theme === 'light' ? 'border-slate-200 bg-gradient-to-br from-white via-slate-50 to-amber-50/20 shadow-md' : 'border-white/5 bg-gradient-to-br from-zinc-950 via-zinc-900/60 to-black'} grid grid-cols-1 md:grid-cols-2 gap-6 items-center`}>
                     <div>
-                      <h3 className="text-xl font-extrabold text-white tracking-tight">{cmsData.about_section?.title}</h3>
-                      <p className="text-xs text-zinc-400 mt-3 leading-relaxed">{cmsData.about_section?.content}</p>
+                      <h3 className={`text-xl font-extrabold ${theme === 'light' ? 'text-slate-900' : 'text-white'} tracking-tight`}>{cmsData.about_section?.title}</h3>
+                      <p className={`text-xs ${theme === 'light' ? 'text-slate-600' : 'text-zinc-400'} mt-3 leading-relaxed`}>{cmsData.about_section?.content}</p>
                     </div>
                     {cmsData.about_section?.image && (
-                      <img src={cmsData.about_section.image} alt="Heritage branding" className="w-full h-44 object-cover rounded-2xl border border-white/10" />
+                      <img src={cmsData.about_section.image} alt="Heritage branding" className={`w-full h-44 object-cover rounded-2xl border ${theme === 'light' ? 'border-slate-200' : 'border-white/10'}`} />
                     )}
                   </div>
                 </div>
@@ -1388,8 +1406,12 @@ export default function App() {
 
               {/* TAB CONTENT: NEARBY SALONS MODULE */}
               {activeCustomerTab === 'nearby' && (
-                <div className="space-y-6">
-                  <div className="h-[600px] rounded-3xl overflow-hidden border border-white/10 bg-zinc-950/40 relative">
+                <div className="space-y-6 animate-fadeIn">
+                  <div className={`h-[650px] rounded-3xl overflow-hidden border ${
+                    theme === 'light' 
+                      ? 'border-slate-200 bg-white shadow-xl shadow-slate-200/80' 
+                      : 'border-white/10 bg-zinc-950/40 shadow-2xl'
+                  } relative transition-all duration-300`}>
                     <GoogleMapComponent
                       selectedHairstyle={selectedHairstyleForMap}
                       userCoordinates={userCoordinates}
@@ -1398,6 +1420,7 @@ export default function App() {
                       setUserAddress={setUserAddress}
                       onSaveSelection={handleSaveSalonSelection}
                       fullscreenMode={true}
+                      theme={theme}
                     />
                   </div>
                 </div>
