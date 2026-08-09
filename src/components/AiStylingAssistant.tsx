@@ -10,6 +10,7 @@ interface AiStylingAssistantProps {
   onAnalyzeComplete: (report: string) => void;
   walletBalance: number;
   onFindNearbySalons?: (hairstyle: string) => void;
+  theme?: 'dark' | 'light';
 }
 
 import { SVG_HAIRSTYLES, HAIR_COLORS } from '../utils/hairLibrary';
@@ -39,7 +40,12 @@ const MODEL_IMAGES: Record<string, string> = {
   "Classic Taper": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400"
 };
 
-export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, onFindNearbySalons }: AiStylingAssistantProps) {
+export default function AiStylingAssistant({ 
+  onAnalyzeComplete, 
+  walletBalance, 
+  onFindNearbySalons,
+  theme = 'dark'
+}: AiStylingAssistantProps) {
   // Navigation
   const [activeTab, setActiveTab] = useState<'scan' | 'consult'>('scan');
 
@@ -582,25 +588,31 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
     );
   };
 
+  const isLight = theme === 'light';
+
   return (
-    <div className="bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
+    <div className={`${isLight ? 'bg-white border-slate-200 text-slate-900 shadow-xl shadow-slate-200/60' : 'bg-zinc-900/60 backdrop-blur-xl border-white/10 text-white shadow-2xl'} border rounded-3xl overflow-hidden relative transition-all duration-300`}>
       {/* Golden accent glow at top */}
       <div className="absolute top-0 right-0 w-36 h-36 bg-yellow-500/10 blur-[50px] pointer-events-none rounded-full" />
       
       {/* Tabs */}
-      <div className="flex border-b border-white/5 bg-black/30">
+      <div className={`flex border-b ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-black/30'}`}>
         <button
           onClick={() => setActiveTab('scan')}
-          className={`flex-1 py-4 text-center font-bold tracking-wider text-xs uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
-            activeTab === 'scan' ? 'bg-yellow-500/15 text-yellow-400 border-b-2 border-yellow-500' : 'text-zinc-400 hover:text-white'
+          className={`flex-1 py-4 text-center font-bold tracking-wider text-xs uppercase transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+            activeTab === 'scan' 
+              ? (isLight ? 'bg-amber-500/15 text-amber-800 border-b-2 border-amber-600 font-extrabold shadow-sm' : 'bg-yellow-500/15 text-yellow-400 border-b-2 border-yellow-500') 
+              : (isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70' : 'text-zinc-400 hover:text-white')
           }`}
         >
           <Camera className="w-4 h-4" /> Hairstyle Analysis Studio
         </button>
         <button
           onClick={() => setActiveTab('consult')}
-          className={`flex-1 py-4 text-center font-bold tracking-wider text-xs uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
-            activeTab === 'consult' ? 'bg-yellow-500/15 text-yellow-400 border-b-2 border-yellow-500' : 'text-zinc-400 hover:text-white'
+          className={`flex-1 py-4 text-center font-bold tracking-wider text-xs uppercase transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+            activeTab === 'consult' 
+              ? (isLight ? 'bg-amber-500/15 text-amber-800 border-b-2 border-amber-600 font-extrabold shadow-sm' : 'bg-yellow-500/15 text-yellow-400 border-b-2 border-yellow-500') 
+              : (isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70' : 'text-zinc-400 hover:text-white')
           }`}
         >
           <Bot className="w-4 h-4" /> AI Grooming Chat
@@ -612,27 +624,33 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
           
           {/* Top Title: HAIRSTYLE ANALYSIS */}
           <div className="text-center max-w-xl mx-auto space-y-2 pb-2">
-            <span className="text-[10px] font-mono tracking-widest text-yellow-500 uppercase font-extrabold bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/10">Premium AI Lab</span>
-            <h2 className="text-2xl font-black text-white tracking-tight uppercase mt-1">Hairstyle Analysis</h2>
-            <p className="text-xs text-zinc-400">Personalized For You &bull; Custom Face Structure Mapping</p>
+            <span className={`text-[10px] font-mono tracking-widest ${isLight ? 'text-amber-800 bg-amber-100 border-amber-300' : 'text-yellow-500 bg-yellow-500/10 border-yellow-500/10'} uppercase font-extrabold px-3 py-1 rounded-full border`}>
+              Premium AI Lab
+            </span>
+            <h2 className={`text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'} tracking-tight uppercase mt-1`}>
+              Hairstyle Analysis
+            </h2>
+            <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+              Personalized For You &bull; Custom Face Structure Mapping
+            </p>
           </div>
 
           {/* Prompt custom request entry */}
-          <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row items-center gap-3">
+          <div className={`${isLight ? 'bg-slate-50 border-slate-200 shadow-sm' : 'bg-zinc-950/60 border-white/5'} border rounded-2xl p-4 flex flex-col md:flex-row items-center gap-3`}>
             <div className="relative flex-1 w-full">
-              <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-yellow-500" />
+              <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500" />
               <input
                 type="text"
                 value={customRequest}
                 onChange={(e) => setCustomRequest(e.target.value)}
                 placeholder="I want a Modern Mullet / Korean Wolf Cut / Buzz Cut..."
-                className="w-full bg-zinc-900/60 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-yellow-500/50"
+                className={`w-full ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-amber-500' : 'bg-zinc-900/60 border-white/5 text-white placeholder:text-zinc-500 focus:border-yellow-500/50'} border rounded-xl py-2.5 pl-10 pr-4 text-xs focus:outline-none shadow-sm`}
               />
             </div>
             <button
               onClick={() => handleRunAiAnalysis()}
               disabled={analyzing || !capturedImage}
-              className="w-full md:w-auto px-5 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-zinc-950 font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-30"
+              className="w-full md:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 text-zinc-950 font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-30 shadow-sm"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${analyzing ? 'animate-spin' : ''}`} /> Apply Style Request
             </button>
@@ -640,18 +658,18 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
 
           {/* Loader status */}
           {analyzing && (
-            <div className="bg-zinc-950/80 border border-yellow-500/25 rounded-2xl p-5 flex flex-col items-center justify-center space-y-3 py-10 shadow-lg shadow-yellow-500/5">
-              <RefreshCw className="w-8 h-8 animate-spin text-yellow-500" />
+            <div className={`${isLight ? 'bg-slate-50 border-amber-300 shadow-lg' : 'bg-zinc-950/80 border-yellow-500/25'} border rounded-2xl p-5 flex flex-col items-center justify-center space-y-3 py-10 shadow-yellow-500/5`}>
+              <RefreshCw className="w-8 h-8 animate-spin text-amber-500" />
               <div className="text-center space-y-1">
-                <p className="text-sm font-bold text-white uppercase tracking-wider">{loadingStep}</p>
-                <p className="text-[10px] text-zinc-400">Analyzing facial proportions, landmarks & hairstyles...</p>
+                <p className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} uppercase tracking-wider`}>{loadingStep}</p>
+                <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>Analyzing facial proportions, landmarks & hairstyles...</p>
               </div>
             </div>
           )}
 
           {/* Scanning Animation */}
           {isScanning && (
-            <div className="relative w-full h-80 rounded-2xl overflow-hidden border border-yellow-500/20 bg-zinc-950">
+            <div className={`relative w-full h-80 rounded-2xl overflow-hidden border ${isLight ? 'border-amber-400/40 bg-slate-900' : 'border-yellow-500/20 bg-zinc-950'}`}>
               {capturedImage && (
                 <img src={capturedImage} alt="Scanning" className="w-full h-full object-cover opacity-50 filter blur-[1px]" />
               )}
@@ -669,28 +687,28 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
             <div className="max-w-4xl mx-auto space-y-6">
               
               {/* Photo Upload Area */}
-              <div className="border border-white/5 rounded-3xl bg-zinc-950/40 p-8 text-center space-y-4 max-w-lg mx-auto">
+              <div className={`border ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-zinc-950/40'} rounded-3xl p-8 text-center space-y-4 max-w-lg mx-auto shadow-sm`}>
                 {capturedImage ? (
-                  <div className="relative w-40 h-40 mx-auto rounded-full overflow-hidden border-2 border-yellow-500/30 group">
+                  <div className="relative w-40 h-40 mx-auto rounded-full overflow-hidden border-2 border-amber-500/40 group shadow-md">
                     <img src={capturedImage} alt="Uploaded face" className="w-full h-full object-cover" />
                     <button 
                       onClick={() => setCapturedImage(null)}
-                      className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center text-red-400 font-bold text-xs transition-opacity"
+                      className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center text-red-400 font-bold text-xs transition-opacity cursor-pointer"
                     >
                       Remove Photo
                     </button>
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 mx-auto">
-                    <Upload className="w-7 h-7 text-yellow-500" />
+                  <div className={`w-16 h-16 rounded-full ${isLight ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white/5 border-white/10 text-zinc-400'} border flex items-center justify-center mx-auto shadow-sm`}>
+                    <Upload className="w-7 h-7 text-amber-500" />
                   </div>
                 )}
                 
                 <div className="space-y-2">
-                  <h3 className="text-md font-bold text-white">
+                  <h3 className={`text-md font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     {capturedImage ? "Photo Uploaded" : "Step 1: Upload Your Portrait"}
                   </h3>
-                  <p className="text-xs text-zinc-400">
+                  <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
                     {capturedImage ? "Define your profile below to unlock recommendations." : "Capture from camera or browse files to load your face."}
                   </p>
                 </div>
@@ -699,13 +717,13 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <button
                       onClick={startCamera}
-                      className="bg-zinc-800 border border-white/10 text-white hover:bg-zinc-700 text-xs font-semibold rounded-xl px-5 py-3 transition flex items-center justify-center gap-1.5"
+                      className={`${isLight ? 'bg-white border-slate-300 text-slate-800 hover:bg-slate-100' : 'bg-zinc-800 border-white/10 text-white hover:bg-zinc-700'} border text-xs font-semibold rounded-xl px-5 py-3 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm`}
                     >
-                      <Camera className="w-4 h-4 text-yellow-500" /> Start Camera
+                      <Camera className="w-4 h-4 text-amber-500" /> Start Camera
                     </button>
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="bg-yellow-400 text-zinc-950 hover:bg-yellow-500 text-xs font-bold rounded-xl px-6 py-3 transition cursor-pointer"
+                      className="bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 text-zinc-950 text-xs font-bold rounded-xl px-6 py-3 transition cursor-pointer shadow-sm"
                     >
                       Browse Folders
                     </button>
@@ -722,8 +740,8 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
 
               {/* Mandatory Selections Form */}
               {capturedImage && (
-                <div className="bg-zinc-950/60 border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider text-yellow-500 border-b border-white/5 pb-3">
+                <div className={`${isLight ? 'bg-slate-50 border-slate-200' : 'bg-zinc-950/60 border-white/5'} border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm`}>
+                  <h3 className={`text-sm font-black ${isLight ? 'text-amber-800 border-slate-200' : 'text-yellow-500 border-white/5'} uppercase tracking-wider border-b pb-3`}>
                     Step 2: Define Grooming Profile Parameters
                   </h3>
 
@@ -731,16 +749,16 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
                     
                     {/* Face Shape */}
                     <div className="space-y-3">
-                      <label className="text-xs font-bold text-zinc-300 block">Face Shape Selection *</label>
+                      <label className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-zinc-300'} block`}>Face Shape Selection *</label>
                       <div className="grid grid-cols-3 gap-2">
                         {['Oval', 'Square', 'Round', 'Heart', 'Diamond', 'Oblong'].map(shape => (
                           <button
                             key={shape}
                             onClick={() => setFaceShape(shape)}
-                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
                               faceShape === shape 
-                                ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' 
-                                : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white'
+                                ? (isLight ? 'bg-amber-500/15 border-amber-500 text-amber-900 font-bold shadow-sm' : 'bg-yellow-500/10 border-yellow-500 text-yellow-400') 
+                                : (isLight ? 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100' : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white')
                             }`}
                           >
                             {shape}
@@ -751,16 +769,16 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
 
                     {/* Hair Density */}
                     <div className="space-y-3">
-                      <label className="text-xs font-bold text-zinc-300 block">Hair Density *</label>
+                      <label className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-zinc-300'} block`}>Hair Density *</label>
                       <div className="grid grid-cols-3 gap-2">
                         {['Low', 'Medium', 'High'].map(density => (
                           <button
                             key={density}
                             onClick={() => setHairDensity(density)}
-                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
                               hairDensity === density 
-                                ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' 
-                                : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white'
+                                ? (isLight ? 'bg-amber-500/15 border-amber-500 text-amber-900 font-bold shadow-sm' : 'bg-yellow-500/10 border-yellow-500 text-yellow-400') 
+                                : (isLight ? 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100' : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white')
                             }`}
                           >
                             {density}
@@ -771,16 +789,16 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
 
                     {/* Hair Length */}
                     <div className="space-y-3">
-                      <label className="text-xs font-bold text-zinc-300 block">Hair Length *</label>
+                      <label className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-zinc-300'} block`}>Hair Length *</label>
                       <div className="grid grid-cols-5 gap-1.5">
                         {['Buzz', 'Very Short', 'Short', 'Medium', 'Long'].map(len => (
                           <button
                             key={len}
                             onClick={() => setHairLength(len)}
-                            className={`py-2 px-1 text-[10px] font-bold rounded-xl border transition-all truncate text-center ${
+                            className={`py-2 px-1 text-[10px] font-bold rounded-xl border transition-all truncate text-center cursor-pointer ${
                               hairLength === len 
-                                ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' 
-                                : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white'
+                                ? (isLight ? 'bg-amber-500/15 border-amber-500 text-amber-900 font-bold shadow-sm' : 'bg-yellow-500/10 border-yellow-500 text-yellow-400') 
+                                : (isLight ? 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100' : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white')
                             }`}
                           >
                             {len}
@@ -791,16 +809,16 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
 
                     {/* Beard Contouring */}
                     <div className="space-y-3">
-                      <label className="text-xs font-bold text-zinc-300 block">Beard Contouring *</label>
+                      <label className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-zinc-300'} block`}>Beard Contouring *</label>
                       <div className="grid grid-cols-2 gap-2">
                         {['Yes', 'No'].map(beard => (
                           <button
                             key={beard}
                             onClick={() => setHasBeard(beard)}
-                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
                               hasBeard === beard 
-                                ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' 
-                                : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white'
+                                ? (isLight ? 'bg-amber-500/15 border-amber-500 text-amber-900 font-bold shadow-sm' : 'bg-yellow-500/10 border-yellow-500 text-yellow-400') 
+                                : (isLight ? 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100' : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/10 hover:text-white')
                             }`}
                           >
                             {beard === 'Yes' ? 'Beard Contouring' : 'Clean Shaven'}
@@ -813,36 +831,36 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
 
                   {/* Custom Request / Aesthetic Goal */}
                   <div className="space-y-3">
-                    <label className="text-xs font-bold text-zinc-300 block">Custom Aesthetic Goal / User Prompt *</label>
+                    <label className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-zinc-300'} block`}>Custom Aesthetic Goal / User Prompt *</label>
                     <textarea
                       value={customRequest}
                       onChange={(e) => setCustomRequest(e.target.value)}
                       placeholder="Explain your desired hairstyle profile, e.g., 'I want a textured curtains haircut', 'A high fade mullet with red dye highlights', 'Keep it professional and clean'"
                       rows={3}
-                      className="w-full bg-zinc-900 border border-white/5 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-yellow-500/50 placeholder:text-zinc-500"
+                      className={`w-full ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-amber-500' : 'bg-zinc-900 border-white/5 text-white placeholder:text-zinc-500 focus:border-yellow-500/50'} border rounded-xl p-3 text-xs focus:outline-none shadow-sm`}
                     />
                   </div>
 
                   {/* Validation feedback checklist */}
-                  <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 space-y-2">
-                    <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block font-bold">Mandatory Verification Checklist:</span>
+                  <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-zinc-900 border-white/5'} border rounded-2xl p-4 space-y-2`}>
+                    <span className={`text-[10px] font-mono ${isLight ? 'text-slate-500' : 'text-zinc-500'} uppercase tracking-widest block font-bold`}>Mandatory Verification Checklist:</span>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${capturedImage ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${capturedImage ? (isLight ? 'text-emerald-700' : 'text-green-400') : (isLight ? 'text-rose-600' : 'text-red-400')}`}>
                         <span>{capturedImage ? '✓' : '✗'}</span> Image Uploaded
                       </div>
-                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${faceShape ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${faceShape ? (isLight ? 'text-emerald-700' : 'text-green-400') : (isLight ? 'text-rose-600' : 'text-red-400')}`}>
                         <span>{faceShape ? '✓' : '✗'}</span> Face Shape Selected
                       </div>
-                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${hairDensity ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${hairDensity ? (isLight ? 'text-emerald-700' : 'text-green-400') : (isLight ? 'text-rose-600' : 'text-red-400')}`}>
                         <span>{hairDensity ? '✓' : '✗'}</span> Hair Density Selected
                       </div>
-                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${hairLength ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${hairLength ? (isLight ? 'text-emerald-700' : 'text-green-400') : (isLight ? 'text-rose-600' : 'text-red-400')}`}>
                         <span>{hairLength ? '✓' : '✗'}</span> Hair Length Selected
                       </div>
-                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${hasBeard ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${hasBeard ? (isLight ? 'text-emerald-700' : 'text-green-400') : (isLight ? 'text-rose-600' : 'text-red-400')}`}>
                         <span>{hasBeard ? '✓' : '✗'}</span> Beard Contouring Selected
                       </div>
-                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${customRequest.trim() ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`text-[10px] font-semibold flex items-center gap-1.5 ${customRequest.trim() ? (isLight ? 'text-emerald-700' : 'text-green-400') : (isLight ? 'text-rose-600' : 'text-red-400')}`}>
                         <span>{customRequest.trim() ? '✓' : '✗'}</span> Aesthetic Goal Entered
                       </div>
                     </div>
@@ -852,7 +870,7 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
                   <button
                     onClick={() => handleRunAiAnalysis()}
                     disabled={!capturedImage || !faceShape || !hairDensity || !hairLength || !hasBeard || !customRequest.trim()}
-                    className="w-full py-4 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-30 disabled:hover:bg-yellow-400 text-zinc-950 font-black rounded-2xl text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 cursor-pointer shadow-xl shadow-yellow-500/10"
+                    className="w-full py-4 bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 disabled:opacity-30 text-zinc-950 font-black rounded-2xl text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 cursor-pointer shadow-xl shadow-amber-500/20"
                   >
                     <Sparkles className="w-4 h-4 text-zinc-950" /> Generate AI Grooming Recommendations
                   </button>
@@ -892,17 +910,17 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
                 {/* LEFT COLUMN: Flat AI Try-On Arena */}
                 <div className="lg:col-span-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase">Try-On Arena (Active Image)</span>
+                    <span className={`text-[10px] font-mono tracking-widest ${isLight ? 'text-slate-500' : 'text-zinc-400'} uppercase font-bold`}>Try-On Arena (Active Image)</span>
                     <button
                       onClick={handleRefreshScanner}
-                      className="text-[11px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-lg"
+                      className="text-[11px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
                     >
                       <span>🔄</span> Refresh Scanner
                     </button>
                   </div>
 
                   {/* Flat composited image container */}
-                  <div className="relative w-full h-[400px] rounded-3xl overflow-hidden border border-white/10 bg-zinc-950">
+                  <div className={`relative w-full h-[400px] rounded-3xl overflow-hidden border ${isLight ? 'border-slate-200 bg-slate-100 shadow-md' : 'border-white/10 bg-zinc-950'}`}>
                     <img 
                       src={previews.find(p => p.name === selectedHairstyle)?.image || capturedImage!} 
                       alt="AI Try-On Result" 
@@ -910,11 +928,11 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
                     />
 
                     {/* Custom try-on label overlay */}
-                    <div className="absolute top-4 left-4 bg-black/75 backdrop-blur px-3 py-1 rounded-full text-[9px] font-mono text-zinc-400 border border-white/5">
+                    <div className="absolute top-4 left-4 bg-black/75 backdrop-blur px-3 py-1 rounded-full text-[9px] font-mono text-zinc-300 border border-white/10">
                       AI Generated Try-On
                     </div>
 
-                    <div className="absolute top-4 right-4 bg-yellow-500/90 text-zinc-950 font-bold px-3 py-1 rounded-full text-[9px] font-mono uppercase tracking-wider border border-yellow-400/20 shadow-lg">
+                    <div className="absolute top-4 right-4 bg-gradient-to-r from-amber-400 to-yellow-500 text-zinc-950 font-bold px-3.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-wider shadow-lg">
                       {selectedHairstyle}
                     </div>
                   </div>
@@ -923,112 +941,115 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
                 {/* RIGHT COLUMN: Best Matches */}
                 <div className="lg:col-span-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase">Best Matches (Recommended)</span>
-                    <span className="text-[9px] text-yellow-500 font-bold bg-yellow-500/10 px-2 py-0.5 rounded">Top Matches</span>
+                    <span className={`text-[10px] font-mono tracking-widest ${isLight ? 'text-slate-500' : 'text-zinc-400'} uppercase font-bold`}>Best Matches (Recommended)</span>
+                    <span className={`text-[9px] ${isLight ? 'text-amber-800 bg-amber-100 border border-amber-300' : 'text-yellow-500 bg-yellow-500/10'} font-bold px-2 py-0.5 rounded`}>Top Matches</span>
                   </div>
 
                   <div className="space-y-4">
-                    {bestMatches.map((style, idx) => (
-                      <div 
-                        key={style.name}
-                        onClick={() => setSelectedHairstyle(style.name)}
-                        className={`p-4 rounded-2xl border transition-all cursor-pointer flex gap-4 items-center ${
-                          selectedHairstyle === style.name 
-                            ? 'bg-yellow-500/10 border-yellow-500/50 shadow-lg' 
-                            : 'bg-zinc-950/80 border-white/5 hover:border-white/10'
-                        }`}
-                      >
-                        <div className="w-24 shrink-0">
-                          {previews.find(p => p.name === style.name) ? (
-                            <img 
-                              src={previews.find(p => p.name === style.name).image} 
-                              alt={style.name} 
-                              className="w-full h-24 object-cover rounded-xl border border-white/5 bg-zinc-900" 
-                            />
-                          ) : (
-                            <FacePreviewCard styleName={style.name} sizeClass="h-24" />
-                          )}
-                        </div>
-                        <div className="flex-1 space-y-1.5 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold text-white truncate">{style.name}</h4>
-                            <span className="text-[10px] font-mono font-bold text-yellow-400 shrink-0">
-                              {style.compatibility}% Match
-                            </span>
+                    {bestMatches.map((style) => {
+                      const isSel = selectedHairstyle === style.name;
+                      return (
+                        <div 
+                          key={style.name}
+                          onClick={() => setSelectedHairstyle(style.name)}
+                          className={`p-4 rounded-2xl border transition-all cursor-pointer flex gap-4 items-center ${
+                            isSel 
+                              ? (isLight ? 'bg-amber-500/15 border-amber-500 shadow-md' : 'bg-yellow-500/10 border-yellow-500/50 shadow-lg')
+                              : (isLight ? 'bg-white border-slate-200 hover:border-amber-300 hover:shadow-sm text-slate-900' : 'bg-zinc-950/80 border-white/5 hover:border-white/10 text-white')
+                          }`}
+                        >
+                          <div className="w-24 shrink-0">
+                            {previews.find(p => p.name === style.name) ? (
+                              <img 
+                                src={previews.find(p => p.name === style.name).image} 
+                                alt={style.name} 
+                                className={`w-full h-24 object-cover rounded-xl border ${isLight ? 'border-slate-200 bg-slate-100' : 'border-white/5 bg-zinc-900'}`} 
+                              />
+                            ) : (
+                              <FacePreviewCard styleName={style.name} sizeClass="h-24" />
+                            )}
                           </div>
-                          
-                          {/* Rating and Stars */}
-                          <div className="flex items-center gap-1 text-[10px] text-yellow-500 font-bold">
-                            <span>{style.rating}</span>
-                            <div className="flex">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <Star 
-                                  key={i} 
-                                  className={`w-3 h-3 ${i < Math.floor(style.rating) ? 'fill-yellow-500 text-yellow-500' : 'text-zinc-700'}`} 
-                                />
-                              ))}
+                          <div className="flex-1 space-y-1.5 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <h4 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate`}>{style.name}</h4>
+                              <span className={`text-[10px] font-mono font-bold ${isLight ? 'text-amber-700' : 'text-yellow-400'} shrink-0`}>
+                                {style.compatibility}% Match
+                              </span>
                             </div>
-                          </div>
+                            
+                            {/* Rating and Stars */}
+                            <div className="flex items-center gap-1 text-[10px] text-amber-500 font-bold">
+                              <span>{style.rating}</span>
+                              <div className="flex">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star 
+                                    key={i} 
+                                    className={`w-3 h-3 ${i < Math.floor(style.rating) ? 'fill-amber-400 text-amber-400' : (isLight ? 'text-slate-300' : 'text-zinc-700')}`} 
+                                  />
+                                ))}
+                              </div>
+                            </div>
 
-                          <p className="text-[10px] text-zinc-400 leading-normal line-clamp-2">
-                            {style.reason}
-                          </p>
+                            <p className={`text-[10px] ${isLight ? 'text-slate-600' : 'text-zinc-400'} leading-normal line-clamp-2`}>
+                              {style.reason}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* RIGHT PANEL - Hair Guide */}
                   {hairGuide && (
-                    <div className="border border-white/10 rounded-3xl p-5 bg-zinc-950/80 space-y-4 shadow-lg">
-                      <div className="border-b border-white/5 pb-2">
-                        <h3 className="text-xs font-black text-white uppercase tracking-wider">Hair Guide</h3>
+                    <div className={`border ${isLight ? 'border-slate-200 bg-slate-50 text-slate-900 shadow-sm' : 'border-white/10 bg-zinc-950/80 text-white shadow-lg'} rounded-3xl p-5 space-y-4`}>
+                      <div className={`border-b ${isLight ? 'border-slate-200' : 'border-white/5'} pb-2`}>
+                        <h3 className={`text-xs font-black ${isLight ? 'text-amber-800' : 'text-white'} uppercase tracking-wider`}>Hair Guide</h3>
                       </div>
                       
                       <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[10px] font-mono">
                         <div className="space-y-0.5">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Hair Type</span>
-                          <span className="text-white font-sans">{hairGuide.hairType}</span>
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Hair Type</span>
+                          <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-sans font-semibold`}>{hairGuide.hairType}</span>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Hair Density</span>
-                          <span className="text-white font-sans">{hairGuide.hairDensity}</span>
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Hair Density</span>
+                          <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-sans font-semibold`}>{hairGuide.hairDensity}</span>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Hair Texture</span>
-                          <span className="text-white font-sans">{hairGuide.hairTexture}</span>
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Hair Texture</span>
+                          <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-sans font-semibold`}>{hairGuide.hairTexture}</span>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Hair Length</span>
-                          <span className="text-white font-sans">{hairGuide.hairLength}</span>
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Hair Length</span>
+                          <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-sans font-semibold`}>{hairGuide.hairLength}</span>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Face Shape</span>
-                          <span className="text-white font-sans">{hairGuide.faceShape}</span>
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Face Shape</span>
+                          <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-sans font-semibold`}>{hairGuide.faceShape}</span>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Hairline</span>
-                          <span className="text-white font-sans">{hairGuide.hairline}</span>
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Hairline</span>
+                          <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-sans font-semibold`}>{hairGuide.hairline}</span>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Forehead</span>
-                          <span className="text-white font-sans">{hairGuide.forehead}</span>
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Forehead</span>
+                          <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-sans font-semibold`}>{hairGuide.forehead}</span>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Jawline</span>
-                          <span className="text-white font-sans">{hairGuide.jawline}</span>
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Jawline</span>
+                          <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-sans font-semibold`}>{hairGuide.jawline}</span>
                         </div>
-                        <div className="space-y-0.5 col-span-2 border-t border-white/5 pt-2">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Ideal Hair Volume</span>
-                          <span className="text-yellow-400 font-sans">{hairGuide.idealHairVolume}</span>
-                        </div>
-                        <div className="space-y-0.5">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Recommended Finish</span>
-                          <span className="text-white font-sans">{hairGuide.recommendedFinish}</span>
+                        <div className={`space-y-0.5 col-span-2 border-t ${isLight ? 'border-slate-200' : 'border-white/5'} pt-2`}>
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Ideal Hair Volume</span>
+                          <span className={`${isLight ? 'text-amber-700' : 'text-yellow-400'} font-sans font-bold`}>{hairGuide.idealHairVolume}</span>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-zinc-500 block uppercase text-[8px]">Recommended Styling Products</span>
-                          <span className="text-white font-sans truncate block">{hairGuide.recommendedStylingProducts}</span>
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Recommended Finish</span>
+                          <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-sans font-semibold`}>{hairGuide.recommendedFinish}</span>
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className={`${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase text-[8px] font-bold`}>Recommended Products</span>
+                          <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-sans font-semibold truncate block`}>{hairGuide.recommendedStylingProducts}</span>
                         </div>
                       </div>
                     </div>
@@ -1040,193 +1061,202 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
 
               {/* SECOND ROW: Good Options */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase">Good Options (Secondary Candidates)</span>
-                  <span className="text-[9px] text-zinc-500 font-mono">4 Variations</span>
+                <div className={`flex items-center justify-between border-b ${isLight ? 'border-slate-200' : 'border-white/5'} pb-2`}>
+                  <span className={`text-[10px] font-mono tracking-widest ${isLight ? 'text-slate-500' : 'text-zinc-400'} uppercase font-bold`}>Good Options (Secondary Candidates)</span>
+                  <span className={`text-[9px] ${isLight ? 'text-slate-500' : 'text-zinc-500'} font-mono`}>4 Variations</span>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {goodOptions.map((style) => (
-                    <div 
-                      key={style.name}
-                      onClick={() => setSelectedHairstyle(style.name)}
-                      className={`p-3 rounded-2xl border transition-all cursor-pointer space-y-2.5 ${
-                        selectedHairstyle === style.name 
-                          ? 'bg-yellow-500/10 border-yellow-500/40' 
-                          : 'bg-zinc-950/80 border-white/5 hover:border-white/10'
-                      }`}
-                    >
-                      {previews.find(p => p.name === style.name) ? (
-                        <img 
-                          src={previews.find(p => p.name === style.name).image} 
-                          alt={style.name} 
-                          className="w-full h-28 object-cover rounded-xl border border-white/5 bg-zinc-900" 
-                        />
-                      ) : (
-                        <FacePreviewCard styleName={style.name} sizeClass="h-28" />
-                      )}
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <h5 className="text-[11px] font-bold text-white truncate">{style.name}</h5>
-                          <span className="text-[9px] text-yellow-400 font-mono shrink-0">{style.compatibility}%</span>
+                  {goodOptions.map((style) => {
+                    const isSel = selectedHairstyle === style.name;
+                    return (
+                      <div 
+                        key={style.name}
+                        onClick={() => setSelectedHairstyle(style.name)}
+                        className={`p-3 rounded-2xl border transition-all cursor-pointer space-y-2.5 ${
+                          isSel 
+                            ? (isLight ? 'bg-amber-500/15 border-amber-500 shadow-md' : 'bg-yellow-500/10 border-yellow-500/40') 
+                            : (isLight ? 'bg-white border-slate-200 hover:border-amber-300 hover:shadow-sm text-slate-900' : 'bg-zinc-950/80 border-white/5 hover:border-white/10 text-white')
+                        }`}
+                      >
+                        {previews.find(p => p.name === style.name) ? (
+                          <img 
+                            src={previews.find(p => p.name === style.name).image} 
+                            alt={style.name} 
+                            className={`w-full h-28 object-cover rounded-xl border ${isLight ? 'border-slate-200 bg-slate-100' : 'border-white/5 bg-zinc-900'}`} 
+                          />
+                        ) : (
+                          <FacePreviewCard styleName={style.name} sizeClass="h-28" />
+                        )}
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <h5 className={`text-[11px] font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate`}>{style.name}</h5>
+                            <span className={`text-[9px] ${isLight ? 'text-amber-700' : 'text-yellow-400'} font-mono font-bold shrink-0`}>{style.compatibility}%</span>
+                          </div>
+                          <p className={`text-[9px] ${isLight ? 'text-slate-600' : 'text-zinc-400'} line-clamp-2 leading-tight`}>
+                            {style.reason}
+                          </p>
                         </div>
-                        <p className="text-[9px] text-zinc-400 line-clamp-2 leading-tight">
-                          {style.reason}
-                        </p>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               {/* THIRD ROW: Less Recommended */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase">Less Recommended Styles</span>
-                  <span className="text-[9px] text-zinc-500 font-mono">Avoid/Alter</span>
+                <div className={`flex items-center justify-between border-b ${isLight ? 'border-slate-200' : 'border-white/5'} pb-2`}>
+                  <span className={`text-[10px] font-mono tracking-widest ${isLight ? 'text-slate-500' : 'text-zinc-400'} uppercase font-bold`}>Less Recommended Styles</span>
+                  <span className={`text-[9px] ${isLight ? 'text-slate-500' : 'text-zinc-500'} font-mono`}>Avoid/Alter</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {lessRecommended.map((style) => (
-                    <div 
-                      key={style.name}
-                      onClick={() => setSelectedHairstyle(style.name)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex gap-4 items-center ${
-                        selectedHairstyle === style.name 
-                          ? 'bg-yellow-500/10 border-yellow-500/40' 
-                          : 'bg-zinc-950/60 border-white/5 hover:border-white/10'
-                      }`}
-                    >
-                      <div className="w-16 shrink-0">
-                        <FacePreviewCard styleName={style.name} sizeClass="h-16" />
+                  {lessRecommended.map((style) => {
+                    const isSel = selectedHairstyle === style.name;
+                    return (
+                      <div 
+                        key={style.name}
+                        onClick={() => setSelectedHairstyle(style.name)}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer flex gap-4 items-center ${
+                          isSel 
+                            ? (isLight ? 'bg-amber-500/15 border-amber-500 shadow-md' : 'bg-yellow-500/10 border-yellow-500/40') 
+                            : (isLight ? 'bg-white border-slate-200 hover:border-amber-300 hover:shadow-sm text-slate-900' : 'bg-zinc-950/60 border-white/5 hover:border-white/10 text-white')
+                        }`}
+                      >
+                        <div className="w-16 shrink-0">
+                          <FacePreviewCard styleName={style.name} sizeClass="h-16" />
+                        </div>
+                        <div className="flex-1 space-y-1 min-w-0">
+                          <h5 className={`text-[11px] font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate`}>{style.name}</h5>
+                          <p className={`text-[9px] ${isLight ? 'text-slate-600' : 'text-zinc-400'} leading-tight`}>
+                            {style.explanation}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 space-y-1 min-w-0">
-                        <h5 className="text-[11px] font-bold text-white truncate">{style.name}</h5>
-                        <p className="text-[9px] text-zinc-400 leading-tight">
-                          {style.explanation}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               {/* BOTTOM: Analysis Summary */}
-              <div className="border border-white/5 bg-zinc-950/60 rounded-3xl p-6 space-y-3">
-                <div className="flex items-center gap-2 text-yellow-500 font-black tracking-wider text-xs">
+              <div className={`border ${isLight ? 'border-slate-200 bg-gradient-to-r from-amber-50 via-white to-amber-50/20 shadow-sm' : 'border-white/5 bg-zinc-950/60'} rounded-3xl p-6 space-y-3`}>
+                <div className={`flex items-center gap-2 ${isLight ? 'text-amber-800' : 'text-yellow-500'} font-black tracking-wider text-xs`}>
                   <Bot className="w-4 h-4" /> ANALYSIS SUMMARY & STRUCTURAL WHY
                 </div>
-                <p className="text-xs text-zinc-300 leading-relaxed font-sans">
+                <p className={`text-xs ${isLight ? 'text-slate-700 font-medium' : 'text-zinc-300'} leading-relaxed font-sans`}>
                   {analysisSummary}
                 </p>
               </div>
 
               {/* Find Nearby Salons Prompt Banner */}
-              <div className="bg-gradient-to-br from-yellow-500/15 via-zinc-950 to-zinc-950 border border-yellow-500/30 rounded-3xl p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className={`bg-gradient-to-br ${isLight ? 'from-amber-100/70 via-white to-amber-50 border-amber-200 shadow-md' : 'from-yellow-500/15 via-zinc-950 to-zinc-950 border-yellow-500/30'} border rounded-3xl p-6 flex flex-col md:flex-row justify-between items-center gap-4`}>
                 <div className="space-y-1 text-center md:text-left">
-                  <h4 className="text-xs uppercase font-mono tracking-widest text-yellow-500 font-bold flex items-center justify-center md:justify-start gap-1.5">
-                    <Sparkles className="w-4 h-4 text-yellow-400" /> Style Selection Complete
+                  <h4 className={`text-xs uppercase font-mono tracking-widest ${isLight ? 'text-amber-800' : 'text-yellow-500'} font-bold flex items-center justify-center md:justify-start gap-1.5`}>
+                    <Sparkles className={`w-4 h-4 ${isLight ? 'text-amber-600' : 'text-yellow-400'}`} /> Style Selection Complete
                   </h4>
-                  <h3 className="text-sm font-extrabold text-white mt-1">Ready to book this style?</h3>
-                  <p className="text-[10px] text-zinc-400">Find nearby hair salons and barber shops that can execute the <span className="text-yellow-400 font-bold">"{selectedHairstyle}"</span> style.</p>
+                  <h3 className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} mt-1`}>Ready to book this style?</h3>
+                  <p className={`text-[10px] ${isLight ? 'text-slate-600' : 'text-zinc-400'}`}>Find nearby hair salons and barber shops that can execute the <span className={`${isLight ? 'text-amber-800' : 'text-yellow-400'} font-bold`}>"{selectedHairstyle}"</span> style.</p>
                 </div>
                 <button
                   onClick={() => onFindNearbySalons && onFindNearbySalons(selectedHairstyle)}
-                  className="w-full md:w-auto px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-zinc-950 font-black rounded-xl text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-yellow-500/10"
+                  className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 text-zinc-950 font-black rounded-xl text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
                 >
                   <MapPin className="w-4 h-4 text-zinc-950" /> Find Nearby Salons
                 </button>
               </div>
 
               {/* BOTTOM GALLERY: Display all generated hairstyle images */}
-              <div className="space-y-4 pt-4 border-t border-white/5">
-                <div className="border-b border-white/5 pb-2 flex justify-between items-center">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">Grooming Portfolio & Try-On Controls</span>
-                  <span className="text-[10px] font-mono text-zinc-500">Professional Studio Gallery</span>
+              <div className={`space-y-4 pt-4 border-t ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
+                <div className={`border-b ${isLight ? 'border-slate-200' : 'border-white/5'} pb-2 flex justify-between items-center`}>
+                  <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} uppercase tracking-wider`}>Grooming Portfolio & Try-On Controls</span>
+                  <span className={`text-[10px] font-mono ${isLight ? 'text-slate-500' : 'text-zinc-500'}`}>Professional Studio Gallery</span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                  {previews.map((preview) => (
-                    <div 
-                      key={preview.name}
-                      onClick={() => setSelectedHairstyle(preview.name)}
-                      className={`group relative rounded-2xl overflow-hidden border transition-all cursor-pointer flex flex-col justify-between ${
-                        selectedHairstyle === preview.name 
-                          ? 'border-yellow-500 bg-zinc-950 scale-95' 
-                          : 'border-white/5 bg-zinc-950/80 hover:border-white/10'
-                      }`}
-                    >
-                      {/* AI Generated Styled Photo Preview */}
-                      <div className="relative w-full h-32 rounded-xl overflow-hidden bg-zinc-950 border border-white/5">
-                        <img src={preview.image} alt={preview.name} className="w-full h-full object-cover" />
-                        <div className="absolute top-2 right-2 bg-yellow-500/90 text-zinc-950 px-2 py-0.5 rounded text-[8px] font-bold">
-                          {preview.compatibility}% Match
+                  {previews.map((preview) => {
+                    const isSel = selectedHairstyle === preview.name;
+                    return (
+                      <div 
+                        key={preview.name}
+                        onClick={() => setSelectedHairstyle(preview.name)}
+                        className={`group relative rounded-2xl overflow-hidden border transition-all cursor-pointer flex flex-col justify-between ${
+                          isSel 
+                            ? (isLight ? 'border-amber-500 bg-white shadow-md' : 'border-yellow-500 bg-zinc-950 scale-95') 
+                            : (isLight ? 'border-slate-200 bg-white hover:border-amber-300 hover:shadow-sm' : 'border-white/5 bg-zinc-950/80 hover:border-white/10')
+                        }`}
+                      >
+                        {/* AI Generated Styled Photo Preview */}
+                        <div className={`relative w-full h-32 rounded-xl overflow-hidden ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-zinc-950 border-white/5'} border`}>
+                          <img src={preview.image} alt={preview.name} className="w-full h-full object-cover" />
+                          <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-zinc-950 px-2 py-0.5 rounded text-[8px] font-bold shadow">
+                            {preview.compatibility}% Match
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="p-3 bg-zinc-950">
-                        <h6 className="text-[10px] font-bold text-zinc-200 truncate group-hover:text-yellow-400 transition">{preview.name}</h6>
                         
-                        {/* Mini control icons */}
-                        <div className="flex items-center justify-between gap-1.5 mt-2 border-t border-white/5 pt-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedHairstyle(preview.name);
-                              handleDownloadTryOn();
-                            }}
-                            className="text-zinc-500 hover:text-yellow-400 transition"
-                            title="Download combination"
-                          >
-                            <Download className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedHairstyle(preview.name);
-                              setFullscreenImage(preview.image);
-                            }}
-                            className="text-zinc-500 hover:text-yellow-400 transition"
-                            title="Show fullscreen preview"
-                          >
-                            <Maximize2 className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(preview.name);
-                            }}
-                            className="text-zinc-500 hover:text-yellow-400 transition"
-                            title="Favorite"
-                          >
-                            <Heart className={`w-3 h-3 ${favorites.includes(preview.name) ? 'fill-red-500 text-red-500' : ''}`} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedHairstyle(preview.name);
-                              handleShare();
-                            }}
-                            className="text-zinc-500 hover:text-yellow-400 transition"
-                            title="Share"
-                          >
-                            <Share2 className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedHairstyle(preview.name);
-                              handleRunAiAnalysis(preview.name);
-                            }}
-                            className="text-zinc-500 hover:text-yellow-400 transition text-[8px] font-bold tracking-widest shrink-0 uppercase"
-                            title="Sync AI Variations"
-                          >
-                            Sync AI
-                          </button>
+                        <div className={`p-3 ${isLight ? 'bg-white' : 'bg-zinc-950'}`}>
+                          <h6 className={`text-[10px] font-bold ${isLight ? 'text-slate-900 group-hover:text-amber-700' : 'text-zinc-200 group-hover:text-yellow-400'} truncate transition`}>{preview.name}</h6>
+                          
+                          {/* Mini control icons */}
+                          <div className={`flex items-center justify-between gap-1.5 mt-2 border-t ${isLight ? 'border-slate-100' : 'border-white/5'} pt-2`}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedHairstyle(preview.name);
+                                handleDownloadTryOn();
+                              }}
+                              className={`${isLight ? 'text-slate-400 hover:text-amber-600' : 'text-zinc-500 hover:text-yellow-400'} transition cursor-pointer`}
+                              title="Download combination"
+                            >
+                              <Download className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedHairstyle(preview.name);
+                                setFullscreenImage(preview.image);
+                              }}
+                              className={`${isLight ? 'text-slate-400 hover:text-amber-600' : 'text-zinc-500 hover:text-yellow-400'} transition cursor-pointer`}
+                              title="Show fullscreen preview"
+                            >
+                              <Maximize2 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(preview.name);
+                              }}
+                              className={`${isLight ? 'text-slate-400 hover:text-red-500' : 'text-zinc-500 hover:text-yellow-400'} transition cursor-pointer`}
+                              title="Favorite"
+                            >
+                              <Heart className={`w-3 h-3 ${favorites.includes(preview.name) ? 'fill-red-500 text-red-500' : ''}`} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedHairstyle(preview.name);
+                                handleShare();
+                              }}
+                              className={`${isLight ? 'text-slate-400 hover:text-amber-600' : 'text-zinc-500 hover:text-yellow-400'} transition cursor-pointer`}
+                              title="Share"
+                            >
+                              <Share2 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedHairstyle(preview.name);
+                                handleRunAiAnalysis(preview.name);
+                              }}
+                              className={`${isLight ? 'text-amber-700 hover:text-amber-800' : 'text-zinc-500 hover:text-yellow-400'} transition text-[8px] font-bold tracking-widest shrink-0 uppercase cursor-pointer`}
+                              title="Sync AI Variations"
+                            >
+                              Sync AI
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1235,9 +1265,9 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
 
           {/* History Panel */}
           {history.length > 0 && (
-            <div className="border-t border-white/5 pt-4 space-y-3">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1">
-                <RefreshCw className="w-3.5 h-3.5 text-yellow-500" /> Generation History log
+            <div className={`border-t ${isLight ? 'border-slate-200' : 'border-white/5'} pt-4 space-y-3`}>
+              <h4 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} uppercase tracking-wider flex items-center gap-1`}>
+                <RefreshCw className="w-3.5 h-3.5 text-amber-500" /> Generation History log
               </h4>
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {history.map((item, idx) => (
@@ -1258,22 +1288,22 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
                         setSelectedHairstyle(item.data.bestMatches[0].name);
                       }
                     }}
-                    className="flex-shrink-0 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-left w-52 hover:border-yellow-500/30 transition group flex flex-col justify-between"
+                    className={`flex-shrink-0 ${isLight ? 'bg-white border-slate-200 hover:border-amber-400 shadow-sm' : 'bg-zinc-950 border-white/5 hover:border-yellow-500/30'} border rounded-2xl p-3 text-left w-52 transition group flex flex-col justify-between cursor-pointer`}
                   >
                     <div>
-                      <div className="text-[9px] text-zinc-500 font-mono flex items-center justify-between mb-1">
+                      <div className={`text-[9px] ${isLight ? 'text-slate-500' : 'text-zinc-500'} font-mono flex items-center justify-between mb-1`}>
                         <span>{item.timestamp}</span>
-                        <span className="text-yellow-500">Restore</span>
+                        <span className="text-amber-500 font-bold">Restore</span>
                       </div>
-                      <div className="text-[10px] text-white font-bold group-hover:text-yellow-400 truncate">
+                      <div className={`text-[10px] ${isLight ? 'text-slate-900 group-hover:text-amber-700' : 'text-white group-hover:text-yellow-400'} font-bold truncate`}>
                         "{item.request || 'Symmetry Scan'}"
                       </div>
-                      <div className="text-[9px] text-zinc-400 mt-1">
+                      <div className={`text-[9px] ${isLight ? 'text-slate-600' : 'text-zinc-400'} mt-1`}>
                         {item.data.detectedFeatures?.faceShape} | {item.data.detectedFeatures?.hairDensity}
                       </div>
                     </div>
                     {item.image && (
-                      <img src={item.image} alt="History scan" className="w-full h-12 object-cover rounded-lg mt-2 border border-white/5" />
+                      <img src={item.image} alt="History scan" className={`w-full h-12 object-cover rounded-lg mt-2 border ${isLight ? 'border-slate-200' : 'border-white/5'}`} />
                     )}
                   </button>
                 ))}
@@ -1283,23 +1313,50 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
 
         </div>
       ) : (
-        /* CONSULT - STYLE CHATBOT (Preserved) */
-        <div className="p-4 flex flex-col h-[480px]">
-          <div className="flex-1 overflow-y-auto space-y-4 p-2 min-h-0 bg-zinc-950/40 rounded-2xl mb-3 border border-white/5">
+        /* CONSULT - STYLE CHATBOT */
+        <div className="p-4 sm:p-6 flex flex-col h-[520px]">
+          {/* Quick Prompts Bar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-3 shrink-0">
+            <span className={`text-[10px] font-mono ${isLight ? 'text-slate-500' : 'text-zinc-500'} uppercase font-bold shrink-0 flex items-center gap-1`}>
+              <Sparkles className="w-3 h-3 text-amber-500" /> Prompts:
+            </span>
+            {[
+              "Best style for round face shape",
+              "How to style a textured quiff",
+              "Low maintenance taper fade tips",
+              "Recommended products for thick hair"
+            ].map((prompt, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  setChatInput(prompt);
+                }}
+                className={`text-[10px] px-2.5 py-1 rounded-full border shrink-0 transition cursor-pointer ${
+                  isLight 
+                    ? 'bg-white border-slate-200 text-slate-700 hover:border-amber-400 hover:bg-amber-50' 
+                    : 'bg-zinc-950 border-white/10 text-zinc-300 hover:border-yellow-500/50 hover:bg-zinc-900'
+                }`}
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+
+          <div className={`flex-1 overflow-y-auto space-y-4 p-3.5 min-h-0 ${isLight ? 'bg-slate-50 border-slate-200 shadow-inner' : 'bg-zinc-950/40 border-white/5'} rounded-2xl mb-3 border`}>
             {chatHistory.map((msg, idx) => (
               <div 
                 key={idx} 
                 className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
               >
                 {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full bg-yellow-500/15 border border-yellow-500/20 flex items-center justify-center shrink-0">
-                    <Bot className="w-4 h-4 text-yellow-400" />
+                  <div className={`w-8 h-8 rounded-full ${isLight ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-yellow-500/15 border-yellow-500/20 text-yellow-400'} border flex items-center justify-center shrink-0 shadow-sm`}>
+                    <Bot className="w-4 h-4" />
                   </div>
                 )}
                 <div className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
                   msg.role === 'user' 
-                    ? 'bg-yellow-500 text-zinc-950 font-bold rounded-tr-none' 
-                    : 'bg-zinc-900 border border-white/10 text-zinc-200 rounded-tl-none'
+                    ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 font-bold rounded-tr-none shadow-md shadow-amber-500/15' 
+                    : (isLight ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm' : 'bg-zinc-900 border border-white/10 text-zinc-200 rounded-tl-none')
                 }`}>
                   {msg.content}
                 </div>
@@ -1307,11 +1364,11 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
             ))}
             {chatLoading && (
               <div className="flex gap-3 max-w-[85%]">
-                <div className="w-8 h-8 rounded-full bg-yellow-500/15 border border-yellow-500/20 flex items-center justify-center shrink-0">
-                  <Bot className="w-4 h-4 text-yellow-400" />
+                <div className={`w-8 h-8 rounded-full ${isLight ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-yellow-500/15 border-yellow-500/20 text-yellow-400'} border flex items-center justify-center shrink-0`}>
+                  <Bot className="w-4 h-4" />
                 </div>
-                <div className="p-4 rounded-2xl text-xs bg-zinc-900 border border-white/15 text-zinc-400 italic flex items-center gap-2">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-yellow-500" /> Consulting styling matrices...
+                <div className={`p-3.5 rounded-2xl text-xs ${isLight ? 'bg-white border-slate-200 text-slate-600' : 'bg-zinc-900 border-white/15 text-zinc-400'} border italic flex items-center gap-2 shadow-sm`}>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-500" /> Consulting styling matrices...
                 </div>
               </div>
             )}
@@ -1323,11 +1380,11 @@ export default function AiStylingAssistant({ onAnalyzeComplete, walletBalance, o
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Ask Stylist: 'Recommendation for diamond shape' or 'Product for texturizing'..."
-              className="flex-1 bg-zinc-950 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-yellow-500/50 placeholder:text-zinc-600"
+              className={`flex-1 ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-amber-500 shadow-sm' : 'bg-zinc-950 border-white/10 text-white placeholder:text-zinc-600 focus:border-yellow-500/50'} border rounded-xl px-4 py-2.5 text-xs focus:outline-none`}
             />
             <button
               type="submit"
-              className="px-4 py-2 bg-yellow-400 text-zinc-950 rounded-xl font-bold hover:opacity-95 text-xs flex items-center justify-center gap-1.5 cursor-pointer max-w-[100px]"
+              className="px-5 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 text-zinc-950 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-sm"
             >
               <Send className="w-3.5 h-3.5" />
             </button>

@@ -1560,6 +1560,7 @@ export default function App() {
                     setSelectedHairstyleForMap(hairstyle);
                     setIsMapModalOpen(true);
                   }}
+                  theme={theme}
                 />
               )}
 
