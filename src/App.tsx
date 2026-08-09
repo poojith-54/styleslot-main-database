@@ -1760,16 +1760,16 @@ export default function App() {
 
       {/* Fullscreen Map Modal */}
       {isMapModalOpen && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 overflow-hidden">
-          <div className="w-full max-w-6xl h-[90vh] bg-zinc-950 border border-white/10 rounded-3xl flex flex-col overflow-hidden shadow-2xl relative">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 overflow-hidden">
+          <div className={`w-full max-w-6xl h-[90vh] ${theme === 'light' ? 'bg-white border-slate-200 text-slate-900 shadow-2xl shadow-slate-400/40' : 'bg-zinc-950 border-white/10 text-white shadow-2xl'} border rounded-3xl flex flex-col overflow-hidden relative`}>
             
             {/* Header */}
-            <div className="p-5 border-b border-white/5 bg-black/40 flex justify-between items-center shrink-0">
+            <div className={`p-4 sm:p-5 border-b ${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-black/40 border-white/5'} flex justify-between items-center shrink-0`}>
               <div>
-                <h3 className="text-sm font-extrabold uppercase tracking-widest text-[#D4AF37] flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-yellow-500 animate-spin" /> Interactive GPS Salon Radar
+                <h3 className={`text-sm font-extrabold uppercase tracking-widest ${theme === 'light' ? 'text-amber-700' : 'text-[#D4AF37]'} flex items-center gap-2`}>
+                  <Compass className="w-4 h-4 text-amber-500 animate-spin" /> Interactive GPS Salon Radar
                 </h3>
-                <p className="text-[10px] text-zinc-500 mt-1">Search areas to locate StyleSlot partner shops. Click a pin or listing to select.</p>
+                <p className={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-zinc-500'} mt-1`}>Search areas to locate StyleSlot partner shops. Click a pin or listing to select.</p>
               </div>
               <button 
                 onClick={() => {
@@ -1777,7 +1777,7 @@ export default function App() {
                   setMapSearchQuery('');
                   setSelectedHairstyleForMap('');
                 }}
-                className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white text-lg transition"
+                className={`w-8 h-8 rounded-full border ${theme === 'light' ? 'border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900' : 'border-white/10 text-zinc-400 hover:text-white'} flex items-center justify-center text-lg transition cursor-pointer`}
               >
                 &times;
               </button>
@@ -1792,17 +1792,18 @@ export default function App() {
                 userAddress={userAddress}
                 setUserAddress={setUserAddress}
                 onSaveSelection={handleSaveSalonSelection}
+                theme={theme}
               />
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-white/5 bg-black/40 flex justify-end shrink-0">
+            <div className={`p-4 border-t ${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-black/40 border-white/5'} flex justify-end shrink-0`}>
               <button 
                 onClick={() => {
                   setIsMapModalOpen(false);
                   setMapSearchQuery('');
                 }}
-                className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                className={`px-5 py-2.5 ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-800' : 'bg-zinc-900 hover:bg-zinc-800 text-white'} rounded-xl text-xs font-bold transition cursor-pointer`}
               >
                 Close Map
               </button>

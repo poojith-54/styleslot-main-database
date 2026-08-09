@@ -20,6 +20,7 @@ interface GoogleMapComponentProps {
   userAddress: string;
   setUserAddress: (address: string) => void;
   fullscreenMode?: boolean;
+  theme?: 'dark' | 'light';
 }
 
 const HAIRSTYLES_LIST = Object.keys(SVG_HAIRSTYLES);
@@ -48,7 +49,8 @@ export default function GoogleMapComponent({
   setUserCoordinates,
   userAddress,
   setUserAddress,
-  fullscreenMode = false
+  fullscreenMode = false,
+  theme = 'dark'
 }: GoogleMapComponentProps) {
   const [apiKey] = useState<string>(() => {
     return (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || '';
@@ -64,6 +66,7 @@ export default function GoogleMapComponent({
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
   const leafletMapInstance = useRef<any>(null);
+  const leafletTileLayerRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const leafletMarkersRef = useRef<any[]>([]);
   const userMarkerRef = useRef<any>(null);
@@ -695,7 +698,11 @@ export default function GoogleMapComponent({
         zoomControl: false
       }).setView([userCoordinates.lat, userCoordinates.lng], 14);
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      const tileUrl = theme === 'light'
+        ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+      leafletTileLayerRef.current = L.tileLayer(tileUrl, {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
       }).addTo(map);
 
@@ -718,6 +725,23 @@ export default function GoogleMapComponent({
       console.error('Leaflet map creation failed:', err);
     }
   }, [mapLoaded, isSandbox, leafletLoaded]);
+
+  // Synchronize dynamic tile layer when theme toggles
+  useEffect(() => {
+    if (leafletMapInstance.current && (window as any).L) {
+      const L = (window as any).L;
+      if (leafletTileLayerRef.current) {
+        leafletMapInstance.current.removeLayer(leafletTileLayerRef.current);
+      }
+      const tileUrl = theme === 'light'
+        ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+      leafletTileLayerRef.current = L.tileLayer(tileUrl, {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+      }).addTo(leafletMapInstance.current);
+    }
+  }, [theme]);
 
   // Sync coords to map viewports
   useEffect(() => {
@@ -1049,15 +1073,17 @@ export default function GoogleMapComponent({
     return 0;
   });
 
+  const isLight = theme === 'light';
+
   return (
-    <div className={`w-full h-full flex flex-col md:flex-row min-h-0 bg-zinc-950 text-white font-sans overflow-hidden ${
+    <div className={`w-full h-full flex flex-col md:flex-row min-h-0 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-zinc-950 text-white'} font-sans overflow-hidden ${
       fullscreenMode ? 'rounded-3xl' : ''
     }`}>
       
       {/* Toast Alert overlay */}
       {toast && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 animate-bounce">
-          <span className={toast.type === 'error' ? 'text-rose-500' : toast.type === 'info' ? 'text-blue-400' : 'text-yellow-500'}>
+        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-50 ${isLight ? 'bg-white border-slate-200 text-slate-900 shadow-xl' : 'bg-zinc-900 border-white/10 text-white shadow-2xl'} border px-4 py-2.5 rounded-2xl flex items-center gap-2 animate-bounce`}>
+          <span className={toast.type === 'error' ? 'text-rose-500' : toast.type === 'info' ? 'text-blue-500' : 'text-amber-500'}>
             ●
           </span>
           <span className="text-xs font-semibold">{toast.message}</span>
@@ -1065,50 +1091,50 @@ export default function GoogleMapComponent({
       )}
 
       {/* LEFT COLUMN: Search & Listings */}
-      <div className="w-full md:w-[420px] flex flex-col shrink-0 min-h-0 bg-zinc-950 border-r border-white/5 relative z-20 order-2 md:order-1 h-[calc(100vh-320px)] md:h-full">
+      <div className={`w-full md:w-[420px] flex flex-col shrink-0 min-h-0 ${isLight ? 'bg-white border-r border-slate-200' : 'bg-zinc-950 border-r border-white/5'} relative z-20 order-2 md:order-1 h-[calc(100vh-320px)] md:h-full`}>
         
         {/* Header bar */}
-        <div className="p-4 bg-zinc-900/40 border-b border-white/5 space-y-3">
+        <div className={`p-4 ${isLight ? 'bg-slate-50/90 border-b border-slate-200' : 'bg-zinc-900/40 border-b border-white/5'} space-y-3`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Compass className="w-4 h-4 text-yellow-500 animate-spin" />
-              <span className="text-xs font-mono uppercase tracking-widest text-[#D4AF37] font-bold">
+              <Compass className="w-4 h-4 text-amber-500 animate-spin" />
+              <span className={`text-xs font-mono uppercase tracking-widest ${isLight ? 'text-amber-700' : 'text-[#D4AF37]'} font-extrabold`}>
                 {isSandbox ? 'Live OpenStreetMap Radar' : 'Live Google Maps Radar'}
               </span>
             </div>
-            <span className="text-[9px] bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded font-mono">
+            <span className={`text-[9px] ${isLight ? 'bg-amber-500/15 text-amber-800' : 'bg-yellow-500/10 text-yellow-500'} px-2 py-0.5 rounded-full font-mono font-bold`}>
               {isOffline ? 'Offline' : 'Connected'}
             </span>
           </div>
 
           <form onSubmit={handleAddressSearch} className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isLight ? 'text-slate-400' : 'text-zinc-500'}`} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search shop name, city, mandal, or pincode..."
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-yellow-500/50"
+                className={`w-full ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-amber-500' : 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-600 focus:border-yellow-500/50'} border rounded-xl py-2.5 pl-10 pr-3 text-xs focus:outline-none shadow-sm`}
               />
             </div>
             <button
               type="submit"
-              className="px-4 bg-yellow-400 text-zinc-950 font-bold rounded-xl text-xs hover:bg-yellow-500 transition cursor-pointer"
+              className="px-4 bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 text-zinc-950 font-bold rounded-xl text-xs transition cursor-pointer shadow-sm"
             >
               Search
             </button>
           </form>
 
           {/* GPS telemetry indicator */}
-          <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1">
+          <div className={`flex items-center justify-between text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-400'} pt-1`}>
             <div className="flex items-center gap-1 truncate max-w-[250px]">
-              <span className="text-yellow-400">📍</span>
+              <span className="text-amber-500">📍</span>
               <span className="truncate">{userAddress || 'Locating GPS position...'}</span>
             </div>
             <button
               onClick={requestUserLocation}
-              className="text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 transition cursor-pointer shrink-0"
+              className={`${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'} font-bold flex items-center gap-1 transition cursor-pointer shrink-0`}
             >
               <Navigation className="w-3 h-3" /> Pin Location
             </button>
@@ -1116,17 +1142,17 @@ export default function GoogleMapComponent({
         </div>
 
         {/* Hairstyle selections helper */}
-        <div className="p-3 mx-4 mt-3 bg-gradient-to-r from-yellow-500/10 to-zinc-900/40 border border-yellow-500/20 rounded-xl flex items-center justify-between gap-3 shrink-0">
+        <div className={`p-3 mx-4 mt-3 ${isLight ? 'bg-amber-50 border-amber-200' : 'bg-gradient-to-r from-yellow-500/10 to-zinc-900/40 border-yellow-500/20'} border rounded-xl flex items-center justify-between gap-3 shrink-0`}>
           <div className="min-w-0">
-            <span className="text-[8px] font-mono text-yellow-400 uppercase tracking-widest flex items-center gap-1">
+            <span className={`text-[8px] font-mono ${isLight ? 'text-amber-800' : 'text-yellow-400'} uppercase tracking-widest flex items-center gap-1 font-bold`}>
               <Sparkles className="w-2.5 h-2.5" /> APPLIED STYLE
             </span>
-            <p className="text-[11px] font-black text-white truncate mt-0.5">{activeHairstyle}</p>
+            <p className={`text-[11px] font-black ${isLight ? 'text-slate-900' : 'text-white'} truncate mt-0.5`}>{activeHairstyle}</p>
           </div>
           <select
             value={activeHairstyle}
             onChange={(e) => setActiveHairstyle(e.target.value)}
-            className="bg-zinc-950 border border-zinc-800 text-[10px] text-zinc-300 font-bold rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+            className={`${isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-zinc-950 border-zinc-800 text-zinc-300'} border text-[10px] font-bold rounded-lg px-2 py-1 focus:outline-none cursor-pointer`}
           >
             {HAIRSTYLES_LIST.map((style) => (
               <option key={style} value={style}>{style}</option>
@@ -1140,7 +1166,7 @@ export default function GoogleMapComponent({
             <select
               value={sortType}
               onChange={(e) => setSortType(e.target.value as any)}
-              className="bg-zinc-900 border border-white/5 rounded-lg px-2.5 py-1 text-[10px] text-zinc-300 font-bold focus:outline-none cursor-pointer shrink-0"
+              className={`${isLight ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-zinc-900 border-white/5 text-zinc-300'} border rounded-lg px-2.5 py-1 text-[10px] font-bold focus:outline-none cursor-pointer shrink-0`}
             >
               <option value="distance">Nearest</option>
               <option value="rating">Highest Rated</option>
@@ -1150,7 +1176,7 @@ export default function GoogleMapComponent({
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="bg-zinc-900 border border-white/5 rounded-lg px-2.5 py-1 text-[10px] text-zinc-300 font-bold focus:outline-none cursor-pointer shrink-0"
+              className={`${isLight ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-zinc-900 border-white/5 text-zinc-300'} border rounded-lg px-2.5 py-1 text-[10px] font-bold focus:outline-none cursor-pointer shrink-0`}
             >
               <option value="All">All Categories</option>
               <option value="salon">Salons</option>
@@ -1163,7 +1189,9 @@ export default function GoogleMapComponent({
           <button
             onClick={() => setShowFilters(f => !f)}
             className={`p-1.5 rounded-lg border transition cursor-pointer shrink-0 ${
-              showFilters ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500' : 'bg-zinc-900 border-white/5 text-zinc-400'
+              showFilters 
+                ? (isLight ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500') 
+                : (isLight ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200' : 'bg-zinc-900 border-white/5 text-zinc-400')
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -1172,17 +1200,19 @@ export default function GoogleMapComponent({
 
         {/* Advanced Filters Accordion */}
         {showFilters && (
-          <div className="mx-4 mt-2 p-3 bg-zinc-900/60 border border-white/5 rounded-xl space-y-3 shrink-0 animate-[slideDown_0.2s_ease-out]">
+          <div className={`mx-4 mt-2 p-3 ${isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-zinc-900/60 border-white/5 text-white'} border rounded-xl space-y-3 shrink-0 animate-[slideDown_0.2s_ease-out]`}>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[9px] font-mono text-zinc-400 uppercase block">Search Radius</label>
+                <label className={`text-[9px] font-mono ${isLight ? 'text-slate-500' : 'text-zinc-400'} uppercase block font-bold`}>Search Radius</label>
                 <div className="flex flex-wrap gap-1">
                   {[2, 5, 10, 20, 50].map((radius) => (
                     <button
                       key={radius}
                       onClick={() => setDistanceFilter(radius)}
-                      className={`text-[9px] font-bold px-2 py-1 rounded-lg border transition ${
-                        distanceFilter === radius ? 'bg-yellow-400 border-yellow-400 text-zinc-950' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'
+                      className={`text-[9px] font-bold px-2 py-1 rounded-lg border transition cursor-pointer ${
+                        distanceFilter === radius 
+                          ? (isLight ? 'bg-amber-500 border-amber-500 text-white' : 'bg-yellow-400 border-yellow-400 text-zinc-950')
+                          : (isLight ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white')
                       }`}
                     >
                       {radius}km
@@ -1192,14 +1222,16 @@ export default function GoogleMapComponent({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] font-mono text-zinc-400 uppercase block">Min Star Rating</label>
+                <label className={`text-[9px] font-mono ${isLight ? 'text-slate-500' : 'text-zinc-400'} uppercase block font-bold`}>Min Star Rating</label>
                 <div className="flex gap-1">
                   {[0, 3, 4, 4.5].map((stars) => (
                     <button
                       key={stars}
                       onClick={() => setRatingFilter(stars)}
-                      className={`text-[9px] font-bold px-2 py-1 rounded-lg border transition ${
-                        ratingFilter === stars ? 'bg-yellow-400 border-yellow-400 text-zinc-950' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'
+                      className={`text-[9px] font-bold px-2 py-1 rounded-lg border transition cursor-pointer ${
+                        ratingFilter === stars 
+                          ? (isLight ? 'bg-amber-500 border-amber-500 text-white' : 'bg-yellow-400 border-yellow-400 text-zinc-950')
+                          : (isLight ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white')
                       }`}
                     >
                       {stars === 0 ? 'Any' : `${stars}★`}
@@ -1209,8 +1241,8 @@ export default function GoogleMapComponent({
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 pt-1 border-t border-white/5">
-              <label className="flex items-center gap-1.5 text-[10px] text-zinc-400 select-none cursor-pointer">
+            <div className={`flex flex-wrap gap-2 pt-1 border-t ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
+              <label className={`flex items-center gap-1.5 text-[10px] ${isLight ? 'text-slate-700' : 'text-zinc-400'} select-none cursor-pointer`}>
                 <input
                   type="checkbox"
                   checked={filterOpenNow}
@@ -1220,7 +1252,7 @@ export default function GoogleMapComponent({
                 <span>Open Now</span>
               </label>
 
-              <label className="flex items-center gap-1.5 text-[10px] text-zinc-400 select-none cursor-pointer">
+              <label className={`flex items-center gap-1.5 text-[10px] ${isLight ? 'text-slate-700' : 'text-zinc-400'} select-none cursor-pointer`}>
                 <input
                   type="checkbox"
                   checked={filterMensSalon}
@@ -1230,7 +1262,7 @@ export default function GoogleMapComponent({
                 <span>Men's Salon</span>
               </label>
 
-              <label className="flex items-center gap-1.5 text-[10px] text-zinc-400 select-none cursor-pointer">
+              <label className={`flex items-center gap-1.5 text-[10px] ${isLight ? 'text-slate-700' : 'text-zinc-400'} select-none cursor-pointer`}>
                 <input
                   type="checkbox"
                   checked={filterWomensSalon}
@@ -1248,55 +1280,58 @@ export default function GoogleMapComponent({
           {loadingPlaces ? (
             <div className="space-y-3">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="p-3.5 border border-white/5 rounded-2xl bg-zinc-900/30 space-y-3 animate-pulse">
+                <div key={n} className={`p-3.5 border ${isLight ? 'border-slate-200 bg-slate-100' : 'border-white/5 bg-zinc-900/30'} rounded-2xl space-y-3 animate-pulse`}>
                   <div className="flex gap-3">
-                    <div className="w-14 h-14 bg-zinc-800 rounded-lg shrink-0" />
+                    <div className={`w-14 h-14 ${isLight ? 'bg-slate-200' : 'bg-zinc-800'} rounded-lg shrink-0`} />
                     <div className="space-y-2 flex-1">
-                      <div className="h-3.5 bg-zinc-800 rounded w-2/3" />
-                      <div className="h-2 bg-zinc-800 rounded w-1/2" />
-                      <div className="h-2 bg-zinc-800 rounded w-1/3" />
+                      <div className={`h-3.5 ${isLight ? 'bg-slate-200' : 'bg-zinc-800'} rounded w-2/3`} />
+                      <div className={`h-2 ${isLight ? 'bg-slate-200' : 'bg-zinc-800'} rounded w-1/2`} />
+                      <div className={`h-2 ${isLight ? 'bg-slate-200' : 'bg-zinc-800'} rounded w-1/3`} />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : sortedPlaces.length === 0 ? (
-            <div className="text-center py-12 space-y-2 text-zinc-500">
-              <MapPin className="w-8 h-8 mx-auto text-zinc-700 animate-pulse" />
+            <div className={`text-center py-12 space-y-2 ${isLight ? 'text-slate-500' : 'text-zinc-500'}`}>
+              <MapPin className={`w-8 h-8 mx-auto ${isLight ? 'text-slate-300' : 'text-zinc-700'} animate-pulse`} />
               <p className="text-xs font-semibold">No nearby grooming businesses were found in this area.</p>
-              <p className="text-[10px] text-zinc-600">Try expanding the search radius or clearing query filters.</p>
+              <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-zinc-600'}`}>Try expanding the search radius or clearing query filters.</p>
             </div>
           ) : (
             <div className="space-y-2.5">
               {sortedPlaces.map((place) => {
                 const isFav = favorites.includes(place.place_id);
+                const isSel = selectedPlace?.place_id === place.place_id;
                 
                 return (
                   <div
                     key={place.place_id}
                     onClick={() => handleSelectPlace(place)}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex gap-3 min-w-0 ${
-                      selectedPlace?.place_id === place.place_id ? 'bg-[#D4AF37]/10 border-[#D4AF37]' : 'bg-zinc-900/40 border-white/5 hover:border-white/10'
+                      isSel 
+                        ? (isLight ? 'bg-amber-500/15 border-amber-500 shadow-md' : 'bg-[#D4AF37]/10 border-[#D4AF37]')
+                        : (isLight ? 'bg-white border-slate-200 hover:border-amber-300 hover:shadow-sm text-slate-900' : 'bg-zinc-900/40 border-white/5 hover:border-white/10 text-white')
                     }`}
                   >
                     {place.photos && place.photos.length > 0 ? (
                       <img
-                        src={place.photos[0].getUrl()}
+                        src={place.photos[0].getUrl ? place.photos[0].getUrl() : (typeof place.photos[0] === 'string' ? place.photos[0] : getSalonPhoto(place.place_id))}
                         alt={place.name}
-                        className="w-14 h-14 rounded-xl object-cover shrink-0 bg-zinc-950 border border-white/5"
+                        className={`w-14 h-14 rounded-xl object-cover shrink-0 ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-zinc-950 border-white/5'} border`}
                       />
                     ) : (
-                      <div className="w-14 h-14 rounded-xl bg-zinc-950 border border-white/5 flex items-center justify-center shrink-0">
-                        <MapPin className="w-5 h-5 text-zinc-800" />
+                      <div className={`w-14 h-14 rounded-xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-zinc-950 border-white/5'} border flex items-center justify-center shrink-0`}>
+                        <MapPin className={`w-5 h-5 ${isLight ? 'text-slate-400' : 'text-zinc-800'}`} />
                       </div>
                     )}
 
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <h6 className="text-xs font-bold text-white leading-tight truncate">{place.name}</h6>
+                          <h6 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} leading-tight truncate`}>{place.name}</h6>
                           {place.isVerified && (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                           )}
                         </div>
                         <button
@@ -1304,27 +1339,27 @@ export default function GoogleMapComponent({
                             e.stopPropagation();
                             handleToggleFavorite(place);
                           }}
-                          className="text-zinc-500 hover:text-red-400 transition shrink-0"
+                          className={`${isLight ? 'text-slate-400 hover:text-red-500' : 'text-zinc-500 hover:text-red-400'} transition shrink-0 cursor-pointer`}
                         >
                           <Heart className={`w-3.5 h-3.5 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
                         </button>
                       </div>
 
-                      <p className="text-[10px] text-zinc-400 font-semibold">{place.category || 'Grooming Services'}</p>
-                      <p className="text-[9px] text-zinc-500 truncate leading-snug">{place.formatted_address}</p>
+                      <p className={`text-[10px] ${isLight ? 'text-slate-600' : 'text-zinc-400'} font-semibold`}>{place.category || 'Grooming Services'}</p>
+                      <p className={`text-[9px] ${isLight ? 'text-slate-500' : 'text-zinc-500'} truncate leading-snug`}>{place.formatted_address}</p>
 
-                      <div className="flex items-center gap-2 text-[9px] font-mono pt-1 text-zinc-400">
-                        <span className="text-yellow-400 flex items-center gap-0.5">
+                      <div className={`flex items-center gap-2 text-[9px] font-mono pt-1 ${isLight ? 'text-slate-600' : 'text-zinc-400'}`}>
+                        <span className="text-amber-500 font-bold flex items-center gap-0.5">
                           ★ {place.rating ? place.rating.toFixed(1) : '0.0'}
-                          <span className="text-zinc-500">({place.user_ratings_total})</span>
+                          <span className={isLight ? 'text-slate-400' : 'text-zinc-500'}>({place.user_ratings_total})</span>
                         </span>
                         <span>|</span>
-                        <span className="text-blue-400 font-bold">📍 {place.distance} km</span>
+                        <span className="text-blue-500 font-bold">📍 {place.distance} km</span>
                         
                         {place.haircutPrice && (
                           <>
                             <span>|</span>
-                            <span className="text-emerald-400 font-bold">₹{place.haircutPrice}</span>
+                            <span className="text-emerald-600 font-bold">₹{place.haircutPrice}</span>
                           </>
                         )}
                       </div>
@@ -1339,7 +1374,7 @@ export default function GoogleMapComponent({
       </div>
 
       {/* RIGHT COLUMN: Map & sliding bottom sheet details */}
-      <div className="flex-1 relative min-h-[320px] md:min-h-0 bg-zinc-950 order-1 md:order-2">
+      <div className={`flex-1 relative min-h-[320px] md:min-h-0 ${isLight ? 'bg-slate-100' : 'bg-zinc-950'} order-1 md:order-2`}>
         
         {/* Map Viewport Container */}
         <div ref={mapRef} className="absolute inset-0 w-full h-full z-10" />
@@ -1347,36 +1382,37 @@ export default function GoogleMapComponent({
         {/* Floating Controls Overlay */}
         <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
           {permissionDenied && (
-            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-3 py-1.5 rounded-xl text-[10px] font-mono backdrop-blur-md">
+            <div className="bg-rose-500/15 border border-rose-500/30 text-rose-600 px-3 py-1.5 rounded-xl text-[10px] font-mono backdrop-blur-md">
               ⚠️ GPS permission denied. Manual search enabled.
             </div>
           )}
           {isSandbox && leafletLoaded && (
-            <div className="bg-black/70 border border-white/10 px-3 py-1.5 rounded-full backdrop-blur-md flex items-center gap-2">
-              <Compass className="w-3.5 h-3.5 text-yellow-500 animate-spin" />
-              <span className="text-xs font-semibold text-white tracking-wide">Live OSM GPS coverage</span>
+            <div className={`${isLight ? 'bg-white/95 border-slate-200 text-slate-900 shadow-md' : 'bg-black/75 border-white/10 text-white shadow-xl'} px-3.5 py-1.5 rounded-full border backdrop-blur-md flex items-center gap-2`}>
+              <Compass className="w-3.5 h-3.5 text-amber-500 animate-spin" />
+              <span className="text-xs font-bold tracking-wide">Live OSM GPS Radar</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
             </div>
           )}
         </div>
 
         {/* Selected Place Detail Drawer overlay */}
         {selectedPlace && mobileDrawerOpen && (
-          <div className="absolute md:right-4 md:bottom-4 bottom-0 left-0 right-0 md:left-auto md:w-[380px] bg-zinc-950/95 md:bg-zinc-950 border border-white/10 md:rounded-3xl rounded-t-3xl p-5 shadow-2xl z-30 overflow-y-auto max-h-[60vh] md:max-h-[500px] animate-[slideUp_0.25s_ease-out] space-y-4">
+          <div className={`absolute md:right-4 md:bottom-4 bottom-0 left-0 right-0 md:left-auto md:w-[380px] ${isLight ? 'bg-white/95 border-slate-200 text-slate-900 shadow-2xl shadow-slate-300/80' : 'bg-zinc-950/95 border-white/10 text-white shadow-2xl'} border md:rounded-3xl rounded-t-3xl p-5 z-30 overflow-y-auto max-h-[60vh] md:max-h-[500px] animate-[slideUp_0.25s_ease-out] space-y-4 backdrop-blur-md`}>
             
             {/* Header info */}
             <div className="flex justify-between items-start gap-4">
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h5 className="text-sm font-extrabold text-white leading-snug">{selectedPlace.name}</h5>
+                  <h5 className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} leading-snug`}>{selectedPlace.name}</h5>
                   {selectedPlace.isVerified && (
-                    <CheckCircle2 className="w-4 h-4 text-yellow-500 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0" />
                   )}
                 </div>
-                <p className="text-[10px] text-zinc-400 mt-1">{selectedPlace.formatted_address}</p>
+                <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-400'} mt-1`}>{selectedPlace.formatted_address}</p>
               </div>
               <button
                 onClick={() => setSelectedPlace(null)}
-                className="p-1 rounded-full bg-zinc-900 border border-white/5 text-zinc-400 hover:text-white transition cursor-pointer"
+                className={`p-1.5 rounded-full ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-zinc-900 text-zinc-400 hover:text-white'} border border-white/5 transition cursor-pointer`}
               >
                 <X className="w-4 h-4" />
               </button>
