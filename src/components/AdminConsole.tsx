@@ -3,8 +3,9 @@ import { Shop, Booking, UserProfile, Coupon, Membership } from '../types';
 import { 
   Shield, Sparkles, Building, Coins, BadgeCheck, FileText, 
   Users, Settings2, Tag, Calendar, Layers, Save, Plus, Trash2, 
-  HelpCircle, Star, Phone, MapPin, Eye, Palette
+  HelpCircle, Star, Phone, MapPin, Eye, Palette, Scissors
 } from 'lucide-react';
+import OwnerDashboard from './OwnerDashboard';
 
 interface AdminConsoleProps {
   shops: Shop[];
@@ -18,15 +19,21 @@ interface AdminConsoleProps {
   onUpdateCms: (key: string, value: any) => Promise<void>;
   onUpdateUserRole: (userId: string, newRole: 'customer' | 'owner' | 'barber' | 'admin') => Promise<void>;
   onRefreshData: () => void;
+  onAcceptBooking?: (bookingId: string) => void;
+  onRejectBooking?: (bookingId: string) => void;
+  onAddBarber?: (shopId: string, barberData: any) => void;
+  onAddService?: (shopId: string, serviceData: any) => void;
 }
 
-type TabType = 'overview' | 'users' | 'shops' | 'cms' | 'promotions';
+type TabType = 'overview' | 'users' | 'shops' | 'owner_portal' | 'cms' | 'promotions';
 
 export default function AdminConsole({ 
   shops, bookings, profile, cmsData, users, coupons, memberships,
-  onToggleShopVerify, onUpdateCms, onUpdateUserRole, onRefreshData 
+  onToggleShopVerify, onUpdateCms, onUpdateUserRole, onRefreshData,
+  onAcceptBooking, onRejectBooking, onAddBarber, onAddService
 }: AdminConsoleProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [selectedShopId, setSelectedShopId] = useState<string>(shops[0]?.id || '');
   const [savingCms, setSavingCms] = useState(false);
 
   // local states for CMS forms
@@ -118,6 +125,7 @@ export default function AdminConsole({
           { id: 'overview', name: 'Overview Dashboard', icon: Layers },
           { id: 'users', name: 'User Directory', icon: Users },
           { id: 'shops', name: 'Salon Registry', icon: Building },
+          { id: 'owner_portal', name: 'Shop Owner Portal', icon: Scissors },
           { id: 'cms', name: 'CMS Website Content', icon: Settings2 },
           { id: 'promotions', name: 'Marketing Coupons', icon: Tag }
         ].map((t) => {
@@ -310,6 +318,37 @@ export default function AdminConsole({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* SHOP OWNER PORTAL TAB */}
+      {activeTab === 'owner_portal' && (
+        <div className="space-y-6 animate-fadeIn">
+          {shops.length > 1 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-zinc-950 border border-white/10 p-4 rounded-2xl gap-3">
+              <div className="flex items-center gap-2">
+                <Scissors className="w-4 h-4 text-yellow-500" />
+                <span className="text-xs font-semibold text-white">Select Salon to Manage in Owner Portal:</span>
+              </div>
+              <select
+                value={selectedShopId || shops[0]?.id}
+                onChange={(e) => setSelectedShopId(e.target.value)}
+                className="bg-zinc-900 border border-zinc-700 text-xs text-yellow-400 font-semibold rounded-xl px-3 py-2 focus:outline-none"
+              >
+                {shops.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.address})</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <OwnerDashboard
+            ownerShop={shops.find(s => s.id === (selectedShopId || shops[0]?.id)) || shops[0]}
+            bookings={bookings}
+            onAcceptBooking={onAcceptBooking || (() => {})}
+            onRejectBooking={onRejectBooking || (() => {})}
+            onAddBarber={onAddBarber || (() => {})}
+            onAddService={onAddService || (() => {})}
+          />
         </div>
       )}
 

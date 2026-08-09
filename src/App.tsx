@@ -20,7 +20,7 @@ import {
   Search, SlidersHorizontal, MapPin, Sparkles, Navigation, Heart, 
   Compass, BadgePercent, Star, ShieldCheck, Ticket, 
   DollarSign, Activity, Bell, CalendarDays, Zap, HelpCircle, ChevronRight, LogOut,
-  Sun, Moon
+  Sun, Moon, Shield, Scissors, Briefcase, User
 } from 'lucide-react';
 
 export default function App() {
@@ -104,6 +104,8 @@ export default function App() {
   });
   const [adminPasswordInput, setAdminPasswordInput] = useState<string>('');
   const [adminAuthError, setAdminAuthError] = useState<string>('');
+  const [adminActivePortal, setAdminActivePortal] = useState<'admin' | 'owner' | 'barber' | 'customer'>('admin');
+  const [adminSelectedShopId, setAdminSelectedShopId] = useState<string>('');
 
   // Customer Filter conditions
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -889,12 +891,41 @@ export default function App() {
               </div>
             ) : (
               /* Authenticated Admin view */
-              <div className="space-y-4">
-                <div className="flex justify-between items-center bg-zinc-950 border border-white/5 px-6 py-3 rounded-2xl">
+              <div className="space-y-6">
+                {/* Admin Top Navigation & Portal Switcher Bar */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-zinc-950 border border-white/5 p-4 md:px-6 md:py-3 rounded-2xl gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" />
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">Admin Mode Active (Route Security)</span>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">Admin Control Desk (Authenticated)</span>
                   </div>
+
+                  {/* Portal Selector in Admin Mode */}
+                  <div className="flex flex-wrap items-center gap-1.5 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
+                    {[
+                      { id: 'admin', name: 'Admin Console', icon: Shield },
+                      { id: 'owner', name: 'Shop Owner Portal', icon: Scissors },
+                      { id: 'barber', name: 'Stylist Workspace', icon: Briefcase },
+                      { id: 'customer', name: 'Customer App', icon: User }
+                    ].map((p) => {
+                      const Icon = p.icon;
+                      const isActive = adminActivePortal === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => setAdminActivePortal(p.id as any)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                            isActive
+                              ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-zinc-950 font-bold shadow-md shadow-yellow-500/10'
+                              : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                          }`}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                          <span>{p.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <button 
                     onClick={() => {
                       sessionStorage.removeItem('styleslot_admin_auth');
@@ -911,26 +942,112 @@ export default function App() {
                   </button>
                 </div>
 
-                <AdminConsole 
-                  shops={shops}
-                  bookings={bookings}
-                  profile={profile || {
-                    id: 'admin-password-session',
-                    name: 'System Administrator',
-                    email: 'admin@styleslot.com',
-                    role: 'admin',
-                    wallet_balance: 1000000,
-                    loyalty_points: 9999
-                  }}
-                  cmsData={cmsData}
-                  users={users}
-                  coupons={coupons}
-                  memberships={memberships}
-                  onToggleShopVerify={handleToggleShopVerify}
-                  onUpdateCms={handleUpdateCms}
-                  onUpdateUserRole={handleUpdateUserRole}
-                  onRefreshData={() => fetchAllData()}
-                />
+                {/* Render Selected Portal in Admin Mode */}
+                {adminActivePortal === 'admin' && (
+                  <AdminConsole 
+                    shops={shops}
+                    bookings={bookings}
+                    profile={profile || {
+                      id: 'admin-password-session',
+                      name: 'System Administrator',
+                      email: 'admin@styleslot.com',
+                      role: 'admin',
+                      wallet_balance: 1000000,
+                      loyalty_points: 9999
+                    }}
+                    cmsData={cmsData}
+                    users={users}
+                    coupons={coupons}
+                    memberships={memberships}
+                    onToggleShopVerify={handleToggleShopVerify}
+                    onUpdateCms={handleUpdateCms}
+                    onUpdateUserRole={handleUpdateUserRole}
+                    onRefreshData={() => fetchAllData()}
+                    onAcceptBooking={handleAcceptRequest}
+                    onRejectBooking={handleDeclineRequest}
+                    onAddBarber={handleAddBarber}
+                    onAddService={handleAddService}
+                  />
+                )}
+
+                {adminActivePortal === 'owner' && (
+                  <div className="space-y-6 animate-fadeIn">
+                    {shops.length > 1 && (
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-zinc-950 border border-white/10 p-4 rounded-2xl gap-3">
+                        <div className="flex items-center gap-2">
+                          <Scissors className="w-4 h-4 text-yellow-500" />
+                          <span className="text-xs font-semibold text-white">Active Salon Management Desk:</span>
+                        </div>
+                        <select
+                          value={adminSelectedShopId || shops[0]?.id}
+                          onChange={(e) => setAdminSelectedShopId(e.target.value)}
+                          className="bg-zinc-900 border border-zinc-700 text-xs text-yellow-400 font-semibold rounded-xl px-3 py-2 focus:outline-none"
+                        >
+                          {shops.map(s => (
+                            <option key={s.id} value={s.id}>{s.name} — {s.address}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <OwnerDashboard 
+                      ownerShop={shops.find(s => s.id === (adminSelectedShopId || shops[0]?.id)) || shops[0]}
+                      bookings={bookings}
+                      onAcceptBooking={handleAcceptRequest}
+                      onRejectBooking={handleDeclineRequest}
+                      onAddBarber={handleAddBarber}
+                      onAddService={handleAddService}
+                    />
+                  </div>
+                )}
+
+                {adminActivePortal === 'barber' && (
+                  <div className="animate-fadeIn">
+                    <StylistWorkspace 
+                      barber={shops[0]?.barbers[0] || {
+                        id: 'barber-1',
+                        name: 'Marcus Vance',
+                        avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=150',
+                        specialty: 'Skin Fades & Beard Sculpting',
+                        rating: 4.9,
+                        isAvailable: true,
+                        bio: '10+ years experience in high-end classic barbering.'
+                      }}
+                      bookings={bookings}
+                      onCompleteBooking={handleCompleteJob}
+                    />
+                  </div>
+                )}
+
+                {adminActivePortal === 'customer' && (
+                  <div className="p-6 bg-zinc-950 border border-white/10 rounded-3xl space-y-4 animate-fadeIn">
+                    <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <User className="w-4 h-4 text-yellow-500" /> Customer Marketplace Preview
+                      </h3>
+                      <button
+                        onClick={() => {
+                          window.location.hash = '';
+                          window.history.pushState(null, '', '/');
+                          setIsAdminPath(false);
+                          setCurrentRole('customer');
+                        }}
+                        className="text-xs text-yellow-400 hover:underline font-semibold"
+                      >
+                        Open Fullscreen Customer Portal &rarr;
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {shops.map(s => (
+                        <div key={s.id} className="p-4 bg-zinc-900 border border-white/5 rounded-2xl space-y-2">
+                          <img src={s.banner || s.image} alt={s.name} className="w-full h-32 object-cover rounded-xl" />
+                          <h4 className="font-bold text-white text-sm">{s.name}</h4>
+                          <p className="text-xs text-zinc-400">{s.address}</p>
+                          <p className="text-xs text-yellow-400 font-mono">Rating: {s.rating} ★ ({s.reviewsCount} reviews)</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
