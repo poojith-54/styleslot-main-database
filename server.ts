@@ -1699,58 +1699,29 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
     }
   });
 
-  function getGradientForColor(colorHex: string): string[] {
-    const gradients: Record<string, string[]> = {
-      '#111113': ['#050505', '#1a1a1c', '#2c2c2e'], // Black
-      '#362211': ['#1c1006', '#3d2613', '#5a3d22'], // Espresso Brown
-      '#cca762': ['#92702c', '#cca762', '#ebd097'], // Golden Blonde
-      '#a8a8b0': ['#52525b', '#a8a8b0', '#f4f4f5'], // Platinum Grey
-      '#7c1a22': ['#4c050b', '#88131b', '#b91c1c'], // Auburn Red
-      '#bd6515': ['#78350f', '#bd6515', '#fbbf24'], // Copper Gold
-      '#2563eb': ['#1e3a8a', '#2563eb', '#60a5fa'], // Neon Blue
-      '#059669': ['#064e3b', '#059669', '#34d399']  // Emerald Green
-    };
-    return gradients[colorHex] || ['#050505', '#1a1a1c', '#2c2c2e'];
-  }
-
-  function generateTryOnImage(base64Image: string, styleName: string, colorHex: string = '#111113'): string {
-    const config = SVG_HAIRSTYLES[styleName];
-    if (!config) return base64Image;
-
-    const gradient = getGradientForColor(colorHex);
-    const mainGradId = `grad-${styleName.replace(/\s+/g, '-')}-${Math.floor(Math.random() * 100000)}`;
-    const scale = config.defaultScale;
-    const yOffset = config.defaultY;
-
-    const svgString = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="100%" height="100%">
-        <defs>
-          <linearGradient id="${mainGradId}" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="${gradient[0]}" />
-            <stop offset="50%" stop-color="${gradient[1]}" />
-            <stop offset="100%" stop-color="${gradient[2] || gradient[1]}" />
-          </linearGradient>
-          <filter id="hair-shadow" x="-10%" y="-10%" width="120%" height="120%">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" />
-          </filter>
-        </defs>
-        
-        <!-- Reference User Face -->
-        <image href="${base64Image}" width="320" height="320" preserveAspectRatio="xMidYMid slice" />
-
-        <!-- Overlaid Hairstyle -->
-        <g transform="translate(160, ${140 + yOffset}) scale(${scale}) translate(-145, -140)">
-          ${config.back ? `<path d="${config.back}" fill="url(#${mainGradId})" opacity="0.95" />` : ''}
-          <path d="${config.top}" fill="url(#${mainGradId})" filter="url(#hair-shadow)" />
-          <path d="${config.details}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" stroke-linecap="round" />
-          ${config.fade ? `<path d="${config.fade}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8" stroke-linecap="round" opacity="0.5" />` : ''}
-        </g>
-      </svg>
-    `.trim();
-
-    const base64Svg = Buffer.from(svgString).toString('base64');
-    return `data:image/svg+xml;base64,${base64Svg}`;
-  }
+  const MODEL_HAIRSTYLE_IMAGES: Record<string, string> = {
+    "Modern Mullet": "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&q=80&w=600",
+    "Burst Fade Mullet": "https://images.unsplash.com/photo-1605497746444-ac9dbd324ce8?auto=format&fit=crop&q=80&w=600",
+    "Low Fade": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=600",
+    "Mid Fade": "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&q=80&w=600",
+    "High Fade": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600",
+    "French Crop": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600",
+    "Crew Cut": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=600",
+    "Buzz Cut": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=600",
+    "Wolf Cut": "https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&q=80&w=600",
+    "Messy Fringe": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600",
+    "Side Part": "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?auto=format&fit=crop&q=80&w=600",
+    "Curtains": "https://images.unsplash.com/photo-1581803118522-7b72a50f7e9f?auto=format&fit=crop&q=80&w=600",
+    "Pompadour": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600",
+    "Textured Quiff": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600",
+    "Undercut": "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&q=80&w=600",
+    "Drop Fade": "https://images.unsplash.com/photo-1605497746444-ac9dbd324ce8?auto=format&fit=crop&q=80&w=600",
+    "Taper Fade": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=600",
+    "Curly Top": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600",
+    "Long Layers": "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&q=80&w=600",
+    "Modern Slick Back": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600",
+    "Classic Taper": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=600"
+  };
 
   app.post('/api/ai/virtual-hairstylist', async (req, res) => {
     const { image, faceShape, hairDensity, hairLength, hasBeard, customRequest } = req.body;
@@ -1770,7 +1741,7 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
     }
 
     const cleanRequest = customRequest.toLowerCase().trim();
-    const allStyles = Object.keys(SVG_HAIRSTYLES);
+    const allStyles = Object.keys(MODEL_HAIRSTYLE_IMAGES);
 
     // 2. Select hairstyles based on prompt variations
     const mullets = ["Modern Mullet", "Burst Fade Mullet", "Wolf Cut", "Messy Fringe"];
@@ -1829,25 +1800,15 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
       selectedHairstyles = selectedHairstyles.slice(0, 10);
     }
 
-    // Generate Try-On Image-to-Image previews (combines face base + SVG hairstyle)
+    // Generate style candidates with realistic studio visual references
     const previews = selectedHairstyles.map(style => {
-      // Pick custom dye color if specified in user request
-      let dyeColor = '#111113';
-      if (cleanRequest.includes('brown')) dyeColor = '#362211';
-      else if (cleanRequest.includes('blonde') || cleanRequest.includes('gold')) dyeColor = '#cca762';
-      else if (cleanRequest.includes('grey') || cleanRequest.includes('gray')) dyeColor = '#a8a8b0';
-      else if (cleanRequest.includes('red') || cleanRequest.includes('auburn')) dyeColor = '#7c1a22';
-      else if (cleanRequest.includes('copper')) dyeColor = '#bd6515';
-      else if (cleanRequest.includes('blue')) dyeColor = '#2563eb';
-      else if (cleanRequest.includes('green')) dyeColor = '#059669';
-
-      const imageUri = generateTryOnImage(image, style, dyeColor);
+      const styleImageUrl = MODEL_HAIRSTYLE_IMAGES[style] || MODEL_HAIRSTYLE_IMAGES["Modern Mullet"];
       return {
         name: style,
         compatibility: Math.floor(Math.random() * 11) + 88, // 88% - 98%
         rating: parseFloat((4.5 + Math.random() * 0.5).toFixed(1)),
-        image: imageUri,
-        reason: `Perfectly accents your ${faceShape} symmetry while fitting the ${hairDensity} density specification.`
+        image: styleImageUrl,
+        reason: `Accents your ${faceShape} symmetry while fitting ${hairDensity} density.`
       };
     });
 
@@ -2028,7 +1989,7 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
       });
     }
 
-    const hfToken = process.env.HF_TOKEN;
+    const hfToken = (req.headers['x-hf-token'] as string) || req.body.hfToken || process.env.HF_TOKEN || '';
     const HF_MODEL = 'black-forest-labs/FLUX.1-Kontext-dev';
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -2068,10 +2029,10 @@ Hair length: ${hairLength}.
 Beard contouring: ${hasBeard === 'Yes' ? 'Contoured' : 'Clean Shaven'}.
 Requested hairstyle: ${targetStyle}.`;
 
-    // 3. Ensure token is present on server
+    // 3. Ensure token is present on server or client header
     if (!hfToken || hfToken.trim() === '') {
       return res.status(503).json({
-        error: "Free AI image generation requires HF_TOKEN configured in the server environment. Please configure your Hugging Face Token in server settings.",
+        error: "Free AI image generation requires your Hugging Face Access Token. Please enter your free token (from huggingface.co/settings/tokens) in the AI Lab settings bar above.",
         providerStatus: "CONFIG_REQUIRED",
         requestId,
         generationStatus: "FAILED",

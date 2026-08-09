@@ -13,7 +13,7 @@ interface AiStylingAssistantProps {
   theme?: 'dark' | 'light';
 }
 
-import { SVG_HAIRSTYLES, HAIR_COLORS } from '../utils/hairLibrary';
+import { HAIR_COLORS } from '../utils/hairLibrary';
 
 // Hairstyle model images dictionary (Unsplash references)
 const MODEL_IMAGES: Record<string, string> = {
@@ -65,6 +65,14 @@ export default function AiStylingAssistant({
   const [cancelRequested, setCancelRequested] = useState(false);
 
   // Hugging Face Remote AI state
+  const [userHfToken, setUserHfToken] = useState<string>(() => {
+    try {
+      return localStorage.getItem('styleslot_user_hf_token') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [tokenInput, setTokenInput] = useState<string>('');
   const [hfGeneratedImage, setHfGeneratedImage] = useState<string | null>(null);
   const [hfProviderStatus, setHfProviderStatus] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -408,7 +416,10 @@ export default function AiStylingAssistant({
       try {
         const hfRes = await fetch('/api/ai/hf-hairstyle-edit', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-hf-token': userHfToken.trim()
+          },
           body: JSON.stringify({
             image: capturedImage,
             faceShape,
@@ -416,7 +427,8 @@ export default function AiStylingAssistant({
             hairLength,
             hasBeard,
             customRequest: activeGoal,
-            specificHairstyle: chosenStyle
+            specificHairstyle: chosenStyle,
+            hfToken: userHfToken.trim()
           })
         });
 
@@ -484,7 +496,10 @@ export default function AiStylingAssistant({
     try {
       const hfRes = await fetch('/api/ai/hf-hairstyle-edit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-hf-token': userHfToken.trim()
+        },
         body: JSON.stringify({
           image: capturedImage,
           faceShape,
@@ -492,7 +507,8 @@ export default function AiStylingAssistant({
           hairLength,
           hasBeard,
           customRequest: customRequest.trim() || styleToUse,
-          specificHairstyle: styleToUse
+          specificHairstyle: styleToUse,
+          hfToken: userHfToken.trim()
         })
       });
 
@@ -533,42 +549,16 @@ export default function AiStylingAssistant({
     await handleGenerateAnotherVariation(styleName);
   };
 
-  // Download combined image: user's face + the overlaid hair SVG
+  // Download generated try-on image
   const handleDownloadTryOn = () => {
-    if (!capturedImage) return;
-    const img = new Image();
-    img.src = capturedImage;
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        // Draw face base
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        // Fetch SVG structure and serialize
-        const svgElement = document.getElementById('tryon-svg-overlay');
-        if (svgElement) {
-          const svgString = new XMLSerializer().serializeToString(svgElement);
-          const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-          const url = URL.createObjectURL(svgBlob);
-          const hairImg = new Image();
-          hairImg.src = url;
-          hairImg.onload = () => {
-            ctx.drawImage(hairImg, 0, 0, canvas.width, canvas.height);
-            // Trigger browser save
-            const a = document.createElement('a');
-            a.href = canvas.toDataURL('image/jpeg', 0.95);
-            a.download = `styleslot-tryon-${selectedHairstyle.replace(/\s+/g, '-').toLowerCase()}.jpg`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          };
-        }
-      }
-    };
+    const imgUrl = hfGeneratedImage || previews.find(p => p.name === selectedHairstyle)?.image || capturedImage;
+    if (!imgUrl) return;
+    const a = document.createElement('a');
+    a.href = imgUrl;
+    a.download = `styleslot-hairstyle-${selectedHairstyle.replace(/\s+/g, '-').toLowerCase()}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   // Chatbot logic
@@ -611,90 +601,16 @@ export default function AiStylingAssistant({
     );
   };
 
-  // Helper component to render SVG path layers for try-on hair
-  const HairstyleSvgContent = ({ styleName, colorGrad }: { styleName: string, colorGrad: string[] }) => {
-    const config = SVG_HAIRSTYLES[styleName];
-    if (!config) return null;
-
-    const mainGradId = `grad-${styleName.replace(/\s+/g, '-')}`;
-    return (
-      <>
-        <defs>
-          <linearGradient id={mainGradId} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={colorGrad[0]} />
-            <stop offset="50%" stopColor={colorGrad[1]} />
-            <stop offset="100%" stopColor={colorGrad[2] || colorGrad[1]} />
-          </linearGradient>
-          <filter id="hair-shadow" x="-10%" y="-10%" width="120%" height="120%">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000000" floodOpacity="0.5" />
-          </filter>
-        </defs>
-
-        {/* Back hair layer */}
-        {config.back && (
-          <path 
-            d={config.back} 
-            fill={`url(#${mainGradId})`} 
-            opacity="0.95" 
-          />
-        )}
-
-        {/* Main top hair body */}
-        <path 
-          d={config.top} 
-          fill={`url(#${mainGradId})`} 
-          filter="url(#hair-shadow)"
-        />
-
-        {/* Highlights & strand lines */}
-        <path 
-          d={config.details} 
-          fill="none" 
-          stroke="rgba(255,255,255,0.18)" 
-          strokeWidth="1.2" 
-          strokeLinecap="round"
-        />
-
-        {/* Fade overlay layer */}
-        {config.fade && (
-          <path 
-            d={config.fade} 
-            fill="none" 
-            stroke="rgba(255,255,255,0.06)" 
-            strokeWidth="8" 
-            strokeLinecap="round" 
-            opacity="0.5"
-          />
-        )}
-      </>
-    );
-  };
-
-  // Render a mini face preview container with the specified style overlaid
-  const FacePreviewCard = ({ styleName, sizeClass = "h-28" }: { styleName: string, sizeClass?: string }) => {
-    const layout = SVG_HAIRSTYLES[styleName];
-    const scaleFactor = layout ? layout.defaultScale : 1.0;
-    const yOffset = layout ? layout.defaultY : 0;
+  // Clean photorealistic hairstyle model card
+  const HairStyleModelCard = ({ styleName, sizeClass = "h-28", imageUrl }: { styleName: string, sizeClass?: string, imageUrl?: string }) => {
+    const fallbackImg = previews.find(p => p.name === styleName)?.image || "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&q=80&w=600";
+    const src = imageUrl || fallbackImg;
 
     return (
-      <div className={`relative w-full ${sizeClass} rounded-xl overflow-hidden bg-zinc-950 border border-white/5`}>
-        {capturedImage ? (
-          <img src={capturedImage} alt="User Face" className="w-full h-full object-cover rounded-xl" />
-        ) : (
-          <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-600 text-xs">No Photo</div>
-        )}
-        {/* Render overlay on face */}
-        {layout && capturedImage && (
-          <div className="absolute inset-0 pointer-events-none">
-            <svg viewBox="0 0 320 256" className="w-full h-full">
-              <g transform={`translate(${160} , ${90 + yOffset}) scale(${scaleFactor * 0.95}) translate(-145, -140)`}>
-                <HairstyleSvgContent styleName={styleName} colorGrad={activeColor.gradient} />
-              </g>
-            </svg>
-          </div>
-        )}
-        <div className="absolute top-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[8px] font-bold text-zinc-300">
-          Try On
+      <div className={`relative w-full ${sizeClass} rounded-xl overflow-hidden bg-zinc-950 border ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
+        <img src={src} alt={styleName} className="w-full h-full object-cover" />
+        <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[8px] font-mono text-zinc-200">
+          Studio Reference
         </div>
       </div>
     );
@@ -733,6 +649,41 @@ export default function AiStylingAssistant({
 
       {activeTab === 'scan' ? (
         <div className="p-6 space-y-8">
+
+          {/* Remote Hugging Face Token Configuration Bar */}
+          <div className={`border ${isLight ? 'border-amber-200 bg-gradient-to-r from-amber-50 via-white to-amber-50 text-slate-800 shadow-sm' : 'border-yellow-500/20 bg-gradient-to-r from-yellow-500/10 via-zinc-950 to-zinc-950 text-zinc-300'} rounded-2xl p-3 flex flex-col md:flex-row items-center justify-between gap-3 text-xs`}>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${userHfToken.trim() ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+              <span className="font-bold">Hugging Face Hosted AI (FLUX.1-Kontext-dev):</span>
+              <span className={`text-[10px] font-mono ${userHfToken.trim() ? (isLight ? 'text-emerald-700' : 'text-green-400') : (isLight ? 'text-amber-800' : 'text-yellow-400')}`}>
+                {userHfToken.trim() ? 'Free Token Active ✓' : 'Free Token Required for Remote Cloud Edit'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <input 
+                type="password"
+                value={tokenInput || userHfToken}
+                onChange={(e) => setTokenInput(e.target.value)}
+                placeholder="Enter free token (hf_...)"
+                className={`px-3 py-1.5 text-xs rounded-xl border font-mono ${isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-zinc-950 border-white/10 text-white'} focus:outline-none focus:border-amber-500 w-full md:w-56`}
+              />
+              <button
+                onClick={() => {
+                  if (tokenInput.trim()) {
+                    setUserHfToken(tokenInput.trim());
+                    localStorage.setItem('styleslot_user_hf_token', tokenInput.trim());
+                    alert("Hugging Face token saved! You can now generate remote FLUX AI edits.");
+                  } else {
+                    localStorage.removeItem('styleslot_user_hf_token');
+                    setUserHfToken('');
+                  }
+                }}
+                className="px-3 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 text-zinc-950 font-bold rounded-xl text-xs whitespace-nowrap cursor-pointer shadow-sm"
+              >
+                Save Token
+              </button>
+            </div>
+          </div>
           
           {/* Top Title: HAIRSTYLE ANALYSIS */}
           <div className="text-center max-w-xl mx-auto space-y-2 pb-2">
@@ -1112,6 +1063,7 @@ export default function AiStylingAssistant({
                   <div className="space-y-4">
                     {bestMatches.map((style) => {
                       const isSel = selectedHairstyle === style.name;
+                      const previewImg = previews.find(p => p.name === style.name)?.image;
                       return (
                         <div 
                           key={style.name}
@@ -1123,14 +1075,14 @@ export default function AiStylingAssistant({
                           }`}
                         >
                           <div className="w-24 shrink-0 relative group">
-                            {previews.find(p => p.name === style.name) ? (
+                            {previewImg ? (
                               <img 
-                                src={previews.find(p => p.name === style.name).image} 
+                                src={previewImg} 
                                 alt={style.name} 
                                 className={`w-full h-24 object-cover rounded-xl border ${isLight ? 'border-slate-200 bg-slate-100' : 'border-white/5 bg-zinc-900'}`} 
                               />
                             ) : (
-                              <FacePreviewCard styleName={style.name} sizeClass="h-24" />
+                              <HairStyleModelCard styleName={style.name} sizeClass="h-24" />
                             )}
                             <button
                               onClick={(e) => {
@@ -1243,6 +1195,7 @@ export default function AiStylingAssistant({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {goodOptions.map((style) => {
                     const isSel = selectedHairstyle === style.name;
+                    const previewImg = previews.find(p => p.name === style.name)?.image;
                     return (
                       <div 
                         key={style.name}
@@ -1254,14 +1207,14 @@ export default function AiStylingAssistant({
                         }`}
                       >
                         <div className="relative group rounded-xl overflow-hidden">
-                          {previews.find(p => p.name === style.name) ? (
+                          {previewImg ? (
                             <img 
-                              src={previews.find(p => p.name === style.name).image} 
+                              src={previewImg} 
                               alt={style.name} 
                               className={`w-full h-28 object-cover rounded-xl border ${isLight ? 'border-slate-200 bg-slate-100' : 'border-white/5 bg-zinc-900'}`} 
                             />
                           ) : (
-                            <FacePreviewCard styleName={style.name} sizeClass="h-28" />
+                            <HairStyleModelCard styleName={style.name} sizeClass="h-28" />
                           )}
                           <button
                             onClick={(e) => {
@@ -1299,6 +1252,7 @@ export default function AiStylingAssistant({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {lessRecommended.map((style) => {
                     const isSel = selectedHairstyle === style.name;
+                    const previewImg = previews.find(p => p.name === style.name)?.image;
                     return (
                       <div 
                         key={style.name}
@@ -1310,7 +1264,7 @@ export default function AiStylingAssistant({
                         }`}
                       >
                         <div className="w-16 shrink-0">
-                          <FacePreviewCard styleName={style.name} sizeClass="h-16" />
+                          <HairStyleModelCard styleName={style.name} sizeClass="h-16" imageUrl={previewImg} />
                         </div>
                         <div className="flex-1 space-y-1 min-w-0">
                           <h5 className={`text-[11px] font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate`}>{style.name}</h5>
