@@ -143,16 +143,6 @@ export default function AiStylingAssistant({
     localStorage.setItem('styleslot_gen_history_v2', JSON.stringify(history));
   }, [history]);
 
-  // SVG auto alignment when hairstyle changes
-  useEffect(() => {
-    const layout = SVG_HAIRSTYLES[selectedHairstyle];
-    if (layout) {
-      setTryOnScale(layout.defaultScale);
-      setTryOnY(layout.defaultY);
-      setTryOnX(0);
-    }
-  }, [selectedHairstyle]);
-
   // Dragging slider tracking
   const handleSliderMove = (clientX: number) => {
     if (!containerRef.current) return;

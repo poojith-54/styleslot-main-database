@@ -2053,7 +2053,7 @@ Requested hairstyle: ${targetStyle}.`;
           const hf = new InferenceClient(hfToken);
           const result = await hf.imageToImage({
             model: HF_MODEL,
-            data: imageBlob,
+            inputs: imageBlob,
             parameters: {
               prompt: editingPrompt,
               negative_prompt: "blurry, deformed, altered face, different person, new person, disfigured, bad anatomy, cartoon, drawing, watermark",
