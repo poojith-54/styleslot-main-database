@@ -64,15 +64,7 @@ export default function AiStylingAssistant({
   const [loadingStep, setLoadingStep] = useState('');
   const [cancelRequested, setCancelRequested] = useState(false);
 
-  // Hugging Face Remote AI state
-  const [userHfToken, setUserHfToken] = useState<string>(() => {
-    try {
-      return localStorage.getItem('styleslot_user_hf_token') || '';
-    } catch {
-      return '';
-    }
-  });
-  const [tokenInput, setTokenInput] = useState<string>('');
+  // Remote AI Generation state
   const [hfGeneratedImage, setHfGeneratedImage] = useState<string | null>(null);
   const [hfProviderStatus, setHfProviderStatus] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -400,16 +392,13 @@ export default function AiStylingAssistant({
       }
 
       // Initial single image generation to conserve free credits
-      setLoadingStep("Executing Remote Hugging Face FLUX.1-Kontext-dev...");
+      setLoadingStep("Generating your hairstyle...");
       let remoteImgUrl: string | null = null;
 
       try {
         const hfRes = await fetch('/api/ai/hf-hairstyle-edit', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-hf-token': userHfToken.trim()
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             image: capturedImage,
             faceShape,
@@ -417,17 +406,16 @@ export default function AiStylingAssistant({
             hairLength,
             hasBeard,
             customRequest: activeGoal,
-            specificHairstyle: chosenStyle,
-            hfToken: userHfToken.trim()
+            specificHairstyle: chosenStyle
           })
         });
 
         const hfData = await hfRes.json();
 
-        if (hfRes.ok && hfData.generatedImage) {
+        if (hfRes.ok && hfData.success && hfData.generatedImage) {
           remoteImgUrl = hfData.generatedImage;
           setHfGeneratedImage(remoteImgUrl);
-          setHfProviderStatus(hfData.providerStatus || "ONLINE");
+          setHfProviderStatus("ONLINE");
           setGenerationError(null);
           setVariationsList([{
             style: chosenStyle,
@@ -435,9 +423,9 @@ export default function AiStylingAssistant({
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }]);
         } else {
-          console.warn("Hugging Face remote response:", hfData);
+          console.warn("Hugging Face remote response error:", hfData);
           setGenerationError(hfData.error || "AI hairstyle generation is temporarily unavailable. Please try again.");
-          setHfProviderStatus(hfData.providerStatus || "UNAVAILABLE");
+          setHfProviderStatus("UNAVAILABLE");
         }
       } catch (hfErr: any) {
         console.error("Remote Hugging Face fetch error:", hfErr);
@@ -486,10 +474,7 @@ export default function AiStylingAssistant({
     try {
       const hfRes = await fetch('/api/ai/hf-hairstyle-edit', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-hf-token': userHfToken.trim()
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           image: capturedImage,
           faceShape,
@@ -497,17 +482,16 @@ export default function AiStylingAssistant({
           hairLength,
           hasBeard,
           customRequest: customRequest.trim() || styleToUse,
-          specificHairstyle: styleToUse,
-          hfToken: userHfToken.trim()
+          specificHairstyle: styleToUse
         })
       });
 
       const hfData = await hfRes.json();
 
-      if (hfRes.ok && hfData.generatedImage) {
+      if (hfRes.ok && hfData.success && hfData.generatedImage) {
         const newImg = hfData.generatedImage;
         setHfGeneratedImage(newImg);
-        setHfProviderStatus(hfData.providerStatus || "ONLINE");
+        setHfProviderStatus("ONLINE");
         setGenerationError(null);
 
         // Update variations list
@@ -640,39 +624,14 @@ export default function AiStylingAssistant({
       {activeTab === 'scan' ? (
         <div className="p-6 space-y-8">
 
-          {/* Remote Hugging Face Token Configuration Bar */}
-          <div className={`border ${isLight ? 'border-amber-200 bg-gradient-to-r from-amber-50 via-white to-amber-50 text-slate-800 shadow-sm' : 'border-yellow-500/20 bg-gradient-to-r from-yellow-500/10 via-zinc-950 to-zinc-950 text-zinc-300'} rounded-2xl p-3 flex flex-col md:flex-row items-center justify-between gap-3 text-xs`}>
+          {/* Remote AI Engine Indicator */}
+          <div className={`border ${isLight ? 'border-amber-200 bg-amber-50/50 text-slate-700' : 'border-yellow-500/20 bg-zinc-950/60 text-zinc-400'} rounded-2xl p-3 flex items-center justify-between text-xs`}>
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${userHfToken.trim() ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
-              <span className="font-bold">Hugging Face Hosted AI (FLUX.1-Kontext-dev):</span>
-              <span className={`text-[10px] font-mono ${userHfToken.trim() ? (isLight ? 'text-emerald-700' : 'text-green-400') : (isLight ? 'text-amber-800' : 'text-yellow-400')}`}>
-                {userHfToken.trim() ? 'Free Token Active ✓' : 'Free Token Required for Remote Cloud Edit'}
-              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-bold">StyleSlot AI Engine:</span>
+              <span className="text-[10px] font-mono text-amber-500 font-semibold">Qwen-Image-Edit-2511 Remote Inference</span>
             </div>
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <input 
-                type="password"
-                value={tokenInput || userHfToken}
-                onChange={(e) => setTokenInput(e.target.value)}
-                placeholder="Enter free token (hf_...)"
-                className={`px-3 py-1.5 text-xs rounded-xl border font-mono ${isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-zinc-950 border-white/10 text-white'} focus:outline-none focus:border-amber-500 w-full md:w-56`}
-              />
-              <button
-                onClick={() => {
-                  if (tokenInput.trim()) {
-                    setUserHfToken(tokenInput.trim());
-                    localStorage.setItem('styleslot_user_hf_token', tokenInput.trim());
-                    alert("Hugging Face token saved! You can now generate remote FLUX AI edits.");
-                  } else {
-                    localStorage.removeItem('styleslot_user_hf_token');
-                    setUserHfToken('');
-                  }
-                }}
-                className="px-3 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 text-zinc-950 font-bold rounded-xl text-xs whitespace-nowrap cursor-pointer shadow-sm"
-              >
-                Save Token
-              </button>
-            </div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-500">Cloud Active</span>
           </div>
           
           {/* Top Title: HAIRSTYLE ANALYSIS */}
@@ -702,7 +661,7 @@ export default function AiStylingAssistant({
             </div>
             <button
               onClick={() => handleRunAiAnalysis()}
-              disabled={analyzing || !capturedImage}
+              disabled={analyzing || !capturedImage || !faceShape || !hairDensity || !hairLength || !hasBeard || !customRequest.trim()}
               className="w-full md:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-95 text-zinc-950 font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-30 shadow-sm"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${analyzing ? 'animate-spin' : ''}`} /> Apply Style Request

@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
@@ -1967,9 +1968,13 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
     }
   });
 
-  // --- HUGGING FACE ZERO-COST REMOTE AI HAIRSTYLE IMAGE GENERATOR ---
+  // --- HUGGING FACE REMOTE QWEN-IMAGE-EDIT-2511 INFERENCE ENGINE ---
+  const hfInferenceCache = new Map<string, { generatedImage: string; timestamp: number }>();
+
   app.post('/api/ai/hf-hairstyle-edit', async (req, res) => {
     const { image, faceShape, hairDensity, hairLength, hasBeard, customRequest, specificHairstyle } = req.body;
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const HF_MODEL = 'Qwen/Qwen-Image-Edit-2511';
 
     // 1. Strict Mandatory Fields Validation
     const errors: Record<string, string> = {};
@@ -1982,32 +1987,36 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
 
     if (Object.keys(errors).length > 0) {
       return res.status(400).json({
+        success: false,
         error: "All mandatory profile parameters must be selected before generating recommendations.",
         details: errors,
-        providerStatus: "VALIDATION_FAILED",
-        generationStatus: "FAILED"
+        generationStatus: "failed",
+        requestId
       });
     }
 
-    const hfToken = (req.headers['x-hf-token'] as string) || req.body.hfToken || process.env.HF_TOKEN || '';
-    const HF_MODEL = 'black-forest-labs/FLUX.1-Kontext-dev';
-    const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    // Server-side HF Token strictly from environment variable
+    const hfToken = (process.env.HF_TOKEN || '').trim();
+    if (!hfToken) {
+      return res.status(400).json({
+        success: false,
+        error: "Server configuration error: HF_TOKEN environment variable is not configured.",
+        generationStatus: "failed",
+        requestId
+      });
+    }
 
-    // 2. Identity Preservation Prompt Construction
-    const targetStyle = specificHairstyle || customRequest.trim();
-    const editingPrompt = `Edit the provided reference photo.
+    // 2. Identity Preservation Prompt Construction (Exact required prompt template)
+    const targetStyle = (specificHairstyle || customRequest || '').trim();
+    const editingPrompt = `Edit the provided reference photograph.
 
-Keep the exact same person.
+Preserve the exact identity of the person.
 
-Preserve the person's identity and facial appearance.
+Preserve the person's facial structure, eyes, eyebrows, nose, lips, skin tone, facial proportions, expression, beard unless explicitly requested otherwise, clothing, body position, lighting, camera angle, and background.
 
-Preserve the face shape, eyes, eyebrows, nose, lips, skin tone, facial proportions, expression, beard unless the user explicitly requests a beard change, body position, clothing, lighting, camera angle, and background.
+Change ONLY the hairstyle according to the user's request.
 
-Change ONLY the hairstyle requested by the user.
-
-Modify the hair style, hair length, hair texture, hair volume and hair color only when explicitly requested.
-
-The hairstyle must naturally fit the person's existing head shape, hairline and facial structure.
+The new hairstyle must naturally fit the person's existing head shape, hairline, facial structure, hair density, and hair characteristics.
 
 Do not create a new person.
 
@@ -2021,104 +2030,596 @@ Do not change the background.
 
 Do not change the camera angle.
 
-Create a photorealistic hairstyle edit that looks naturally attached to the person's existing head.
+Do not modify areas outside the intended hair region.
 
-Face shape: ${faceShape}.
-Hair density: ${hairDensity}.
-Hair length: ${hairLength}.
-Beard contouring: ${hasBeard === 'Yes' ? 'Contoured' : 'Clean Shaven'}.
-Requested hairstyle: ${targetStyle}.`;
+Create a realistic, photorealistic hairstyle transformation.
 
-    // 3. Inference Execution via Hugging Face or Zero-Cost Remote FLUX Cloud Layer
+USER REQUEST:
+${targetStyle}`;
+
+    // 3. Request Caching via Parameter Hash
+    const cacheKeySrc = `${image.substring(0, 500)}_${faceShape}_${hairDensity}_${hairLength}_${hasBeard}_${targetStyle}`;
+    const requestHash = crypto.createHash('sha256').update(cacheKeySrc).digest('hex');
+
+    const cachedRes = hfInferenceCache.get(requestHash);
+    if (cachedRes && (Date.now() - cachedRes.timestamp < 24 * 60 * 60 * 1000)) {
+      return res.json({
+        success: true,
+        generatedImage: cachedRes.generatedImage,
+        generationStatus: "completed",
+        requestId: `req_cached_${Date.now()}`,
+        model: HF_MODEL,
+        cached: true
+      });
+    }
+
+    // 4. Remote Hugging Face Inference Execution (No local model files or weights loaded)
     try {
-      let outputBase64: string | null = null;
-      let usedProvider = "FLUX.1-Kontext-dev (Hugging Face)";
-
-      // Attempt 1: If Hugging Face token is provided, run on Hugging Face hosted inference
-      if (hfToken && hfToken.trim() !== '') {
-        try {
-          // Process image buffer safely
-          let base64Data = image;
-          let mimeType = 'image/jpeg';
-          if (image.startsWith('data:')) {
-            const matches = image.match(/^data:([^;]+);base64,(.+)$/);
-            if (matches) {
-              mimeType = matches[1];
-              base64Data = matches[2];
-            }
-          }
-          const imageBuffer = Buffer.from(base64Data, 'base64');
-          const imageBlob = new Blob([imageBuffer], { type: mimeType });
-
-          const hf = new InferenceClient(hfToken);
-          const result = await hf.imageToImage({
-            model: HF_MODEL,
-            inputs: imageBlob,
-            parameters: {
-              prompt: editingPrompt,
-              negative_prompt: "blurry, deformed, altered face, different person, new person, disfigured, bad anatomy, cartoon, drawing, watermark",
-              strength: 0.72,
-              guidance_scale: 7.5
-            }
-          });
-
-          if (result) {
-            const arrayBuffer = await (result as Blob).arrayBuffer();
-            outputBase64 = Buffer.from(arrayBuffer).toString('base64');
-            usedProvider = "FLUX.1-Kontext-dev (Hugging Face Hosted)";
-          }
-        } catch (hfErr: any) {
-          console.warn("Hugging Face API call warning, falling back to remote hosted FLUX cloud inference:", hfErr?.message || hfErr);
+      let base64Data = image;
+      let mimeType = 'image/jpeg';
+      if (image.startsWith('data:')) {
+        const matches = image.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+          mimeType = matches[1];
+          base64Data = matches[2];
         }
       }
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      const imageBlob = new Blob([imageBuffer], { type: mimeType });
 
-      // Attempt 2: If HF token is absent or HF API is loading/gated, execute Remote Hosted FLUX AI inference
-      if (!outputBase64) {
-        const fluxPrompt = `Photorealistic ultra-detailed portrait of the user with a fresh ${targetStyle} haircut, ${hairLength} hair length, ${hairDensity} hair density, ${hasBeard === 'Yes' ? 'neatly contoured beard' : 'clean shaven face'}, matching ${faceShape} face shape, professional studio lighting, 8k resolution, cinematic masterpiece, natural hair texture, barbershop precision`;
-        const encodedPrompt = encodeURIComponent(fluxPrompt);
-        const randomSeed = Math.floor(Math.random() * 1000000);
-        const remoteFluxUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=flux&width=512&height=512&nologo=true&seed=${randomSeed}`;
-
-        const remoteRes = await fetch(remoteFluxUrl);
-        if (remoteRes.ok) {
-          const arrayBuffer = await remoteRes.arrayBuffer();
-          outputBase64 = Buffer.from(arrayBuffer).toString('base64');
-          usedProvider = "FLUX.1 Remote AI Cloud Layer";
+      const hf = new InferenceClient(hfToken);
+      const result = await hf.imageToImage({
+        model: HF_MODEL,
+        inputs: imageBlob,
+        parameters: {
+          prompt: editingPrompt,
+          negative_prompt: "blurry, deformed, altered face, different person, new person, disfigured, bad anatomy, cartoon, drawing, watermark",
+          strength: 0.75,
+          guidance_scale: 7.5
         }
+      });
+
+      if (!result) {
+        throw new Error("Empty response received from Hugging Face remote inference server.");
       }
 
-      if (!outputBase64) {
-        return res.status(502).json({
-          error: "AI hairstyle generation is temporarily unavailable. Please try again.",
-          providerStatus: "UNAVAILABLE",
-          requestId,
-          generationStatus: "FAILED",
-          model: HF_MODEL
-        });
-      }
+      const arrayBuffer = await (result as Blob).arrayBuffer();
+      const outputBase64 = Buffer.from(arrayBuffer).toString('base64');
+      const generatedImage = `data:${mimeType};base64,${outputBase64}`;
 
-      const generatedImage = `data:image/jpeg;base64,${outputBase64}`;
+      // Save to server-side cache
+      hfInferenceCache.set(requestHash, {
+        generatedImage,
+        timestamp: Date.now()
+      });
 
       return res.json({
+        success: true,
         generatedImage,
-        providerStatus: "ONLINE",
-        providerName: usedProvider,
+        generationStatus: "completed",
         requestId,
-        generationStatus: "COMPLETED",
-        model: HF_MODEL,
-        style: targetStyle,
-        prompt: editingPrompt
+        model: HF_MODEL
       });
 
     } catch (err: any) {
-      console.error("Remote AI hairstyle generation error:", err?.message || err);
+      console.error("Remote Qwen-Image-Edit-2511 HF inference error:", err?.message || err);
+      
+      const errMsg = err?.message || '';
+      let userFriendlyError = "AI hairstyle generation is temporarily unavailable. Please try again.";
+
+      if (errMsg.includes('depleted your monthly included credits') || errMsg.includes('quota') || errMsg.includes('rate limit')) {
+        userFriendlyError = "Free AI image generation limit has been reached. Please try again later.";
+      } else if (errMsg.includes('Invalid token') || errMsg.includes('401') || errMsg.includes('Unauthorized')) {
+        userFriendlyError = "Hugging Face authentication failed. Please verify server HF_TOKEN variable.";
+      } else if (errMsg.includes('404') || errMsg.includes('not found') || errMsg.includes('unavailable')) {
+        userFriendlyError = "Remote AI inference provider is currently unavailable. Please try again later.";
+      }
+
       return res.status(500).json({
-        error: "AI hairstyle generation is temporarily unavailable. Please try again.",
-        providerStatus: "ERROR",
+        success: false,
+        error: userFriendlyError,
+        generationStatus: "failed",
         requestId,
-        generationStatus: "FAILED",
         model: HF_MODEL
       });
+    }
+  });
+
+
+  // --- REAL DYNAMIC NEARBY PLACES DISCOVERY & GEOCODING API ---
+  const placesCache = new Map<string, { data: any[]; timestamp: number }>();
+  const geocodeCache = new Map<string, { data: any[]; timestamp: number }>();
+  const reverseGeocodeCache = new Map<string, { data: any; timestamp: number }>();
+  const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour cache
+
+  function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371000; // metres
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c);
+  }
+
+  // 1. Nearby Businesses Endpoint (Google Places API Nearby Search + Fallback)
+  app.get('/api/places/nearby', async (req, res) => {
+    try {
+      const lat = parseFloat(req.query.lat as string);
+      const lng = parseFloat(req.query.lng as string);
+      const radius = Math.min(Math.max(parseInt(req.query.radius as string) || 5000, 1000), 35000); // 1km to 35km
+      const categoryFilter = (req.query.category as string || 'all').toLowerCase();
+      const searchQuery = (req.query.query as string || '').toLowerCase().trim();
+
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({ error: "Valid 'lat' and 'lng' query parameters are required." });
+      }
+
+      // Check In-Memory Grid Cache (rounded to 2 decimal places ~ 1.1km grid)
+      const cacheKey = `${lat.toFixed(2)}_${lng.toFixed(2)}_${radius}_${categoryFilter}_${searchQuery}`;
+      const cached = placesCache.get(cacheKey);
+      let rawPlaces: any[] = [];
+      let usedGooglePlacesApi = false;
+
+      if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+        rawPlaces = cached.data;
+      } else {
+        // Attempt Google Places API (New) - Nearby Search (New)
+        const googleApiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_PLACES_API_KEY;
+        const isApiKeyValid = googleApiKey && googleApiKey.trim().length > 10 && !googleApiKey.includes('YOUR_GOOGLE_MAPS_API_KEY');
+
+        if (isApiKeyValid) {
+          const startTime = Date.now();
+          const reqId = `places-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          try {
+            // Google Places API (New) REST Endpoint
+            const googleNewPlacesUrl = 'https://places.googleapis.com/v1/places:searchNearby';
+
+            const includedTypes = ["hair_salon", "barber_shop", "beauty_salon"];
+
+            const requestBody = {
+              includedTypes,
+              maxResultCount: 20,
+              locationRestriction: {
+                circle: {
+                  center: {
+                    latitude: lat,
+                    longitude: lng
+                  },
+                  radius: radius
+                }
+              },
+              rankPreference: "DISTANCE"
+            };
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            const gRes = await fetch(googleNewPlacesUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': googleApiKey.trim(),
+                'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount,places.businessStatus,places.currentOpeningHours,places.googleMapsUri,places.photos,places.primaryType,places.types,places.nationalPhoneNumber'
+              },
+              body: JSON.stringify(requestBody),
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (gRes.ok) {
+              const gData = await gRes.json();
+              const placesList = gData.places || [];
+              usedGooglePlacesApi = true;
+
+              rawPlaces = placesList.map((place: any) => {
+                const itemLat = place.location?.latitude;
+                const itemLng = place.location?.longitude;
+                if (!itemLat || !itemLng) return null;
+
+                const distanceM = calculateDistanceMeters(lat, lng, itemLat, itemLng);
+                if (distanceM > radius) return null; // Strict 5 KM radius enforcement
+
+                const types: string[] = place.types || [];
+                const primaryType = (place.primaryType || '').toLowerCase();
+                let category = 'Salon';
+                if (primaryType.includes('barber') || types.includes('barber_shop')) {
+                  category = 'Barber';
+                } else if (primaryType.includes('beauty') || types.includes('beauty_salon')) {
+                  category = 'Beauty';
+                } else if (primaryType.includes('hair') || types.includes('hair_salon')) {
+                  category = 'Hair';
+                }
+
+                const name = place.displayName?.text || place.displayName || 'Salon';
+                const openNow = place.currentOpeningHours?.openNow ?? null;
+                const photoMedia = place.photos && place.photos.length > 0
+                  ? `https://places.googleapis.com/v1/${place.photos[0].name}/media?maxHeightPx=400&maxWidthPx=400&key=${googleApiKey.trim()}`
+                  : null;
+
+                return {
+                  id: `google-${place.id}`,
+                  placeId: place.id,
+                  name,
+                  hasRealName: true,
+                  category,
+                  address: place.formattedAddress || null,
+                  phoneNumber: place.nationalPhoneNumber || null,
+                  phone: place.nationalPhoneNumber || null,
+                  website: place.googleMapsUri || null,
+                  openingHours: openNow !== null ? (openNow ? 'Open Now' : 'Closed') : null,
+                  openNow,
+                  isOpen: openNow,
+                  businessStatus: place.businessStatus || 'OPERATIONAL',
+                  rating: place.rating ? parseFloat(place.rating) : null,
+                  reviewsCount: place.userRatingCount ? parseInt(place.userRatingCount, 10) : null,
+                  reviewCount: place.userRatingCount ? parseInt(place.userRatingCount, 10) : null,
+                  coordinates: { lat: itemLat, lng: itemLng },
+                  latitude: itemLat,
+                  longitude: itemLng,
+                  distanceMeters: distanceM,
+                  distanceKm: parseFloat((distanceM / 1000).toFixed(1)),
+                  source: 'Google Places API (New)',
+                  isPlatformRegistered: false,
+                  googleMapsUri: place.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${itemLat},${itemLng}&query_place_id=${place.id}`,
+                  googleMapsUrl: place.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${itemLat},${itemLng}&query_place_id=${place.id}`,
+                  photo: photoMedia,
+                  photoUrl: photoMedia
+                };
+              }).filter(Boolean);
+
+              const duration = Date.now() - startTime;
+              console.log(`[Google Places API New] ReqID: ${reqId}, Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}, Count: ${rawPlaces.length}, Duration: ${duration}ms`);
+
+              placesCache.set(cacheKey, { data: rawPlaces, timestamp: Date.now() });
+            } else {
+              const errText = await gRes.text();
+              console.warn(`[Google Places API New] HTTP ${gRes.status} Error: ${errText}`);
+            }
+          } catch (gErr: any) {
+            console.warn(`[Google Places API New] Request Exception:`, gErr?.message || gErr);
+          }
+        }
+
+        // Fallback to OpenStreetMap Overpass if Google API key was not configured or failed
+        if (!usedGooglePlacesApi) {
+          const overpassMirrors = [
+            'https://overpass-api.de/api/interpreter',
+            'https://lz4.overpass-api.de/api/interpreter',
+            'https://overpass.kumi.systems/api/interpreter'
+          ];
+
+          const overpassQuery = `[out:json][timeout:20];
+          (
+            node["shop"~"hairdresser|beauty|spa|barber"](around:${radius},${lat},${lng});
+            way["shop"~"hairdresser|beauty|spa|barber"](around:${radius},${lat},${lng});
+            node["amenity"~"hairdresser|spa|beauty_salon|beauty|public_bath"](around:${radius},${lat},${lng});
+            way["amenity"~"hairdresser|spa|beauty_salon|beauty|public_bath"](around:${radius},${lat},${lng});
+            node["craft"~"hairdresser|barber"](around:${radius},${lat},${lng});
+          );
+          out body center;`;
+
+          let overpassSuccess = false;
+          for (const mirror of overpassMirrors) {
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+              const opRes = await fetch(mirror, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                  'User-Agent': 'StyleSlot-App/1.0 (contact@styleslot.com)'
+                },
+                body: `data=${encodeURIComponent(overpassQuery)}`,
+                signal: controller.signal
+              });
+              clearTimeout(timeoutId);
+
+              if (opRes.ok) {
+                const opData = await opRes.json();
+                const elements = opData.elements || [];
+                
+                rawPlaces = elements.map((el: any) => {
+                  const itemLat = el.lat || (el.center && el.center.lat);
+                  const itemLng = el.lon || (el.center && el.center.lng);
+                  if (!itemLat || !itemLng) return null;
+
+                  const tags = el.tags || {};
+                  const name = tags.name || tags['name:en'] || tags['name:te'] || tags['name:hi'] || '';
+                  const hasRealName = !!name;
+
+                  let category = 'Salon';
+                  const shopTag = (tags.shop || '').toLowerCase();
+                  const amenityTag = (tags.amenity || '').toLowerCase();
+                  const nameLower = name.toLowerCase();
+
+                  if (shopTag === 'barber' || nameLower.includes('barber') || nameLower.includes('men')) {
+                    category = 'Barber';
+                  } else if (amenityTag === 'spa' || shopTag === 'spa' || nameLower.includes('spa')) {
+                    category = 'Spa';
+                  } else if (nameLower.includes('beauty') || amenityTag === 'beauty_salon' || amenityTag === 'beauty') {
+                    category = 'Beauty';
+                  } else if (shopTag === 'hairdresser' || nameLower.includes('hair')) {
+                    category = 'Hair';
+                  }
+
+                  const street = tags['addr:street'] || '';
+                  const houseNumber = tags['addr:housenumber'] || '';
+                  const suburb = tags['addr:suburb'] || tags['addr:neighbourhood'] || '';
+                  const city = tags['addr:city'] || tags['addr:town'] || tags['addr:village'] || '';
+                  const postcode = tags['addr:postcode'] || '';
+                  const fullAddressTag = tags['addr:full'] || '';
+
+                  let address = fullAddressTag;
+                  if (!address) {
+                    const parts = [];
+                    if (houseNumber || street) parts.push(`${houseNumber} ${street}`.trim());
+                    if (suburb) parts.push(suburb);
+                    if (city) parts.push(city);
+                    if (postcode) parts.push(postcode);
+                    address = parts.length > 0 ? parts.join(', ') : '';
+                  }
+
+                  const phone = tags.phone || tags['contact:phone'] || tags['contact:mobile'] || null;
+                  const website = tags.website || tags['contact:website'] || tags['contact:instagram'] || tags['contact:facebook'] || null;
+                  const openingHours = tags.opening_hours || null;
+                  const distanceM = calculateDistanceMeters(lat, lng, itemLat, itemLng);
+
+                  return {
+                    id: `osm-${el.type}-${el.id}`,
+                    name: hasRealName ? name : `${category} (${city || 'Local Area'})`,
+                    hasRealName,
+                    category,
+                    address: address || null,
+                    phone,
+                    website,
+                    openingHours,
+                    openNow: null,
+                    rating: null,
+                    reviewsCount: null,
+                    coordinates: { lat: itemLat, lng: itemLng },
+                    distanceMeters: distanceM,
+                    distanceKm: parseFloat((distanceM / 1000).toFixed(1)),
+                    source: 'OpenStreetMap',
+                    isPlatformRegistered: false
+                  };
+                }).filter(Boolean);
+
+                overpassSuccess = true;
+                placesCache.set(cacheKey, { data: rawPlaces, timestamp: Date.now() });
+                break;
+              }
+            } catch (e: any) {
+              console.warn(`Overpass mirror ${mirror} failed:`, e?.message || e);
+            }
+          }
+
+          if (!overpassSuccess && (!cached || !cached.data.length)) {
+            console.warn('All Overpass mirrors failed or timed out.');
+          }
+        }
+      }
+
+      // Step 2: Merge registered StyleSlot platform shops from database/mock tables within the radius
+      let registeredShops: any[] = [];
+      try {
+        if (!useMockDatabase && supabaseAdmin) {
+          const { data: dbShops } = await supabaseAdmin.from('shops').select('*');
+          registeredShops = dbShops || [];
+        } else {
+          registeredShops = mockShops;
+        }
+      } catch {
+        registeredShops = mockShops;
+      }
+
+      const platformPlaces = registeredShops.map((shop: any) => {
+        const shopLat = shop.latitude || (shop.coordinates && shop.coordinates.lat);
+        const shopLng = shop.longitude || (shop.coordinates && shop.coordinates.lng);
+        if (!shopLat || !shopLng) return null;
+
+        const distanceM = calculateDistanceMeters(lat, lng, shopLat, shopLng);
+        if (distanceM > radius) return null;
+
+        return {
+          id: `styleslot-${shop.id}`,
+          name: shop.name,
+          hasRealName: true,
+          category: shop.categories && shop.categories[0] ? shop.categories[0] : 'Salon',
+          address: shop.address,
+          phone: shop.whatsappNumber || null,
+          website: shop.instagram ? `https://instagram.com/${shop.instagram.replace('@', '')}` : null,
+          openingHours: shop.workingHours || null,
+          rating: shop.rating ? parseFloat(shop.rating) : null,
+          reviewsCount: shop.reviewsCount || (shop.reviews ? shop.reviews.length : 0),
+          coordinates: { lat: shopLat, lng: shopLng },
+          distanceMeters: distanceM,
+          distanceKm: parseFloat((distanceM / 1000).toFixed(1)),
+          source: 'StyleSlot Platform',
+          isPlatformRegistered: true,
+          verifiedImage: shop.image || null,
+          haircutPrice: shop.haircutPrice,
+          services: shop.services
+        };
+      }).filter(Boolean);
+
+      // Combine both sources
+      let combined = [...platformPlaces, ...rawPlaces];
+
+      // Remove duplicate locations within 25 meters with identical names
+      const seen = new Set<string>();
+      combined = combined.filter(item => {
+        const key = `${item.name.toLowerCase().trim()}_${item.coordinates.lat.toFixed(4)}_${item.coordinates.lng.toFixed(4)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Filter by Category if specified
+      if (categoryFilter && categoryFilter !== 'all') {
+        combined = combined.filter(item => {
+          const itemCat = item.category.toLowerCase();
+          if (categoryFilter === 'salons' || categoryFilter === 'salon') {
+            return itemCat.includes('salon') || itemCat.includes('hair');
+          }
+          if (categoryFilter === 'barbers' || categoryFilter === 'barber') {
+            return itemCat.includes('barber');
+          }
+          if (categoryFilter === 'spa') {
+            return itemCat.includes('spa');
+          }
+          if (categoryFilter === 'beauty') {
+            return itemCat.includes('beauty');
+          }
+          if (categoryFilter === 'hair') {
+            return itemCat.includes('hair') || itemCat.includes('salon') || itemCat.includes('barber');
+          }
+          return itemCat.includes(categoryFilter);
+        });
+      }
+
+      // Filter by Query if provided
+      if (searchQuery) {
+        combined = combined.filter(item => {
+          const nameMatch = item.name.toLowerCase().includes(searchQuery);
+          const addressMatch = (item.address || '').toLowerCase().includes(searchQuery);
+          const categoryMatch = item.category.toLowerCase().includes(searchQuery);
+          return nameMatch || addressMatch || categoryMatch;
+        });
+      }
+
+      // Sort by actual distance ascending
+      combined.sort((a, b) => a.distanceMeters - b.distanceMeters);
+
+      res.json({
+        success: true,
+        total: combined.length,
+        radiusMeters: radius,
+        center: { lat, lng },
+        results: combined,
+        places: combined
+      });
+
+    } catch (err: any) {
+      console.error("Nearby places endpoint error:", err?.message || err);
+      res.status(500).json({ error: "Failed to fetch nearby businesses.", details: err?.message || err });
+    }
+  });
+
+  // 2. Dynamic Geocoding Endpoint (Search any village, town, city, mandal, district, pincode)
+  app.get('/api/places/geocode', async (req, res) => {
+    try {
+      const query = (req.query.q as string || '').trim();
+      if (!query) {
+        return res.status(400).json({ error: "Query parameter 'q' is required." });
+      }
+
+      const cacheKey = query.toLowerCase();
+      const cached = geocodeCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+        return res.json(cached.data);
+      }
+
+      const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=6&countrycodes=in`;
+      const geoRes = await fetch(nominatimUrl, {
+        headers: {
+          'User-Agent': 'StyleSlot-App/1.0 (contact@styleslot.com)',
+          'Accept-Language': 'en'
+        }
+      });
+
+      if (!geoRes.ok) {
+        throw new Error(`Nominatim geocode returned HTTP ${geoRes.status}`);
+      }
+
+      const geoData: any[] = await geoRes.json();
+      const results = geoData.map((item: any) => {
+        const addr = item.address || {};
+        const locality = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district || addr.city || '';
+        const district = addr.county || addr.state_district || '';
+        const state = addr.state || '';
+        const postcode = addr.postcode || '';
+
+        return {
+          displayName: item.display_name,
+          shortName: locality ? `${locality}${district ? ', ' + district : ''}${state ? ', ' + state : ''}` : item.display_name,
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+          type: item.type || item.class || 'locality',
+          importance: item.importance || 0,
+          locality,
+          district,
+          state,
+          postcode,
+          boundingBox: item.boundingbox ? item.boundingbox.map((b: string) => parseFloat(b)) : null
+        };
+      });
+
+      geocodeCache.set(cacheKey, { data: results, timestamp: Date.now() });
+      return res.json(results);
+
+    } catch (err: any) {
+      console.error("Geocoding error:", err?.message || err);
+      res.status(500).json({ error: "Geocoding request failed.", details: err?.message || err });
+    }
+  });
+
+  // 3. Reverse Geocoding Endpoint (Coordinates to Locality String)
+  app.get('/api/places/reverse-geocode', async (req, res) => {
+    try {
+      const lat = parseFloat(req.query.lat as string);
+      const lng = parseFloat(req.query.lng as string);
+
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({ error: "Valid 'lat' and 'lng' parameters required." });
+      }
+
+      const cacheKey = `${lat.toFixed(3)}_${lng.toFixed(3)}`;
+      const cached = reverseGeocodeCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+        return res.json(cached.data);
+      }
+
+      const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
+      const revRes = await fetch(revUrl, {
+        headers: {
+          'User-Agent': 'StyleSlot-App/1.0 (contact@styleslot.com)',
+          'Accept-Language': 'en'
+        }
+      });
+
+      if (!revRes.ok) {
+        throw new Error(`Reverse geocode returned HTTP ${revRes.status}`);
+      }
+
+      const data = await revRes.json();
+      const addr = data.address || {};
+      const locality = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district || addr.city || '';
+      const district = addr.county || addr.state_district || '';
+      const state = addr.state || '';
+      const postcode = addr.postcode || '';
+
+      const summary = locality ? `${locality}${district ? ', ' + district : ''}${state ? ', ' + state : ''}` : data.display_name;
+
+      const result = {
+        displayName: data.display_name,
+        locality: summary,
+        city: addr.city || addr.town || addr.village || '',
+        district,
+        state,
+        postcode,
+        lat,
+        lng
+      };
+
+      reverseGeocodeCache.set(cacheKey, { data: result, timestamp: Date.now() });
+      return res.json(result);
+
+    } catch (err: any) {
+      console.error("Reverse geocoding error:", err?.message || err);
+      res.status(500).json({ error: "Reverse geocoding failed.", details: err?.message || err });
     }
   });
 

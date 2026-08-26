@@ -9,6 +9,7 @@ import {
 import MockMap from './components/MockMap';
 import AiStylingAssistant from './components/AiStylingAssistant';
 import GoogleMapComponent from './components/GoogleMapComponent';
+import NearbySalonsDiscovery from './components/NearbySalonsDiscovery';
 import CheckoutWizard from './components/CheckoutWizard';
 import OwnerDashboard from './components/OwnerDashboard';
 import StylistWorkspace from './components/StylistWorkspace';
@@ -1404,25 +1405,16 @@ export default function App() {
                 </div>
               )}
 
-              {/* TAB CONTENT: NEARBY SALONS MODULE */}
+              {/* TAB CONTENT: NEARBY SALONS DISCOVERY MODULE */}
               {activeCustomerTab === 'nearby' && (
-                <div className="space-y-6 animate-fadeIn">
-                  <div className={`h-[650px] rounded-3xl overflow-hidden border ${
-                    theme === 'light' 
-                      ? 'border-slate-200 bg-white shadow-xl shadow-slate-200/80' 
-                      : 'border-white/10 bg-zinc-950/40 shadow-2xl'
-                  } relative transition-all duration-300`}>
-                    <GoogleMapComponent
-                      selectedHairstyle={selectedHairstyleForMap}
-                      userCoordinates={userCoordinates}
-                      setUserCoordinates={setUserCoordinates}
-                      userAddress={userAddress}
-                      setUserAddress={setUserAddress}
-                      onSaveSelection={handleSaveSalonSelection}
-                      fullscreenMode={true}
-                      theme={theme}
-                    />
-                  </div>
+                <div className="animate-fadeIn">
+                  <NearbySalonsDiscovery
+                    theme={theme}
+                    selectedHairstyle={selectedHairstyleForMap}
+                    onSelectBusiness={(business) => {
+                      setSelectedHairstyleForMap(business.name);
+                    }}
+                  />
                 </div>
               )}
 
