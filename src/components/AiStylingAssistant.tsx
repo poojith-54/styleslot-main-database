@@ -396,7 +396,7 @@ export default function AiStylingAssistant({
       let remoteImgUrl: string | null = null;
 
       try {
-        const hfRes = await fetch('/api/ai/hf-hairstyle-edit', {
+        const hfRes = await fetch('/api/generate-hairstyle', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -406,7 +406,8 @@ export default function AiStylingAssistant({
             hairLength,
             hasBeard,
             customRequest: activeGoal,
-            specificHairstyle: chosenStyle
+            specificHairstyle: chosenStyle,
+            hairstyleRequest: chosenStyle || activeGoal
           })
         });
 
@@ -472,7 +473,7 @@ export default function AiStylingAssistant({
     setGenerationError(null);
 
     try {
-      const hfRes = await fetch('/api/ai/hf-hairstyle-edit', {
+      const hfRes = await fetch('/api/generate-hairstyle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -482,7 +483,9 @@ export default function AiStylingAssistant({
           hairLength,
           hasBeard,
           customRequest: customRequest.trim() || styleToUse,
-          specificHairstyle: styleToUse
+          specificHairstyle: styleToUse,
+          hairstyleRequest: styleToUse,
+          skipCache: true
         })
       });
 

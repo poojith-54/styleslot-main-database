@@ -1971,24 +1971,22 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
   // --- HUGGING FACE REMOTE QWEN-IMAGE-EDIT-2511 INFERENCE ENGINE ---
   const hfInferenceCache = new Map<string, { generatedImage: string; timestamp: number }>();
 
-  app.post('/api/ai/hf-hairstyle-edit', async (req, res) => {
-    const { image, faceShape, hairDensity, hairLength, hasBeard, customRequest, specificHairstyle } = req.body;
+  const handleHairstyleGeneration = async (req: express.Request, res: express.Response) => {
+    const { image, faceShape, hairDensity, hairLength, hasBeard, customRequest, specificHairstyle, hairstyleRequest, skipCache } = req.body;
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const HF_MODEL = 'Qwen/Qwen-Image-Edit-2511';
 
-    // 1. Strict Mandatory Fields Validation
+    const userStyleGoal = (specificHairstyle || hairstyleRequest || customRequest || '').trim();
+
+    // 1. Mandatory Fields Validation
     const errors: Record<string, string> = {};
     if (!image) errors.image = "Uploaded portrait photo is required.";
-    if (!faceShape) errors.faceShape = "Face shape must be selected.";
-    if (!hairDensity) errors.hairDensity = "Hair density must be selected.";
-    if (!hairLength) errors.hairLength = "Hair length must be selected.";
-    if (!hasBeard) errors.hasBeard = "Beard contouring must be selected.";
-    if (!customRequest || !customRequest.trim()) errors.customRequest = "Custom aesthetic goal is required.";
+    if (!userStyleGoal) errors.hairstyleRequest = "Hairstyle request is required.";
 
     if (Object.keys(errors).length > 0) {
       return res.status(400).json({
         success: false,
-        error: "All mandatory profile parameters must be selected before generating recommendations.",
+        error: "Uploaded photo and hairstyle request are required.",
         details: errors,
         generationStatus: "failed",
         requestId
@@ -1996,7 +1994,11 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
     }
 
     // Server-side HF Token strictly from environment variable
-    const hfToken = (process.env.HF_TOKEN || '').trim();
+    let hfToken = (process.env.HF_TOKEN || '').trim();
+    if (hfToken.startsWith('hhf_')) {
+      hfToken = hfToken.substring(1);
+    }
+
     if (!hfToken) {
       return res.status(400).json({
         success: false,
@@ -2007,50 +2009,47 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
     }
 
     // 2. Identity Preservation Prompt Construction (Exact required prompt template)
-    const targetStyle = (specificHairstyle || customRequest || '').trim();
-    const editingPrompt = `Edit the provided reference photograph.
+    const editingPrompt = `Edit this reference photograph.
 
-Preserve the exact identity of the person.
+Preserve the same person's identity and facial appearance.
 
-Preserve the person's facial structure, eyes, eyebrows, nose, lips, skin tone, facial proportions, expression, beard unless explicitly requested otherwise, clothing, body position, lighting, camera angle, and background.
+Keep the face, facial structure, eyes, eyebrows, nose, lips, skin tone, facial proportions, facial expression, beard, clothing, body position, camera angle, lighting, and background unchanged.
 
-Change ONLY the hairstyle according to the user's request.
+Change only the hairstyle according to the user's request.
 
-The new hairstyle must naturally fit the person's existing head shape, hairline, facial structure, hair density, and hair characteristics.
+Make the hairstyle naturally fit the person's head shape, hairline, hair density, and facial structure.
 
-Do not create a new person.
+Do not create a different person.
 
-Do not replace the face.
+Do not replace or regenerate the face.
 
-Do not alter facial features.
-
-Do not change the clothing.
+Do not change clothing.
 
 Do not change the background.
 
 Do not change the camera angle.
 
-Do not modify areas outside the intended hair region.
+The final result must look like a realistic photograph of the same person.
 
-Create a realistic, photorealistic hairstyle transformation.
+USER HAIRSTYLE REQUEST:
+${userStyleGoal}`;
 
-USER REQUEST:
-${targetStyle}`;
-
-    // 3. Request Caching via Parameter Hash
-    const cacheKeySrc = `${image.substring(0, 500)}_${faceShape}_${hairDensity}_${hairLength}_${hasBeard}_${targetStyle}`;
+    // 3. Request Caching via Parameter Hash (bypassed if skipCache is true for Refresh requests)
+    const cacheKeySrc = `${image.substring(0, 500)}_${faceShape || ''}_${hairDensity || ''}_${userStyleGoal}`;
     const requestHash = crypto.createHash('sha256').update(cacheKeySrc).digest('hex');
 
-    const cachedRes = hfInferenceCache.get(requestHash);
-    if (cachedRes && (Date.now() - cachedRes.timestamp < 24 * 60 * 60 * 1000)) {
-      return res.json({
-        success: true,
-        generatedImage: cachedRes.generatedImage,
-        generationStatus: "completed",
-        requestId: `req_cached_${Date.now()}`,
-        model: HF_MODEL,
-        cached: true
-      });
+    if (!skipCache) {
+      const cachedRes = hfInferenceCache.get(requestHash);
+      if (cachedRes && (Date.now() - cachedRes.timestamp < 24 * 60 * 60 * 1000)) {
+        return res.json({
+          success: true,
+          generatedImage: cachedRes.generatedImage,
+          generationStatus: "completed",
+          requestId: `req_cached_${Date.now()}`,
+          model: HF_MODEL,
+          cached: true
+        });
+      }
     }
 
     // 4. Remote Hugging Face Inference Execution (No local model files or weights loaded)
@@ -2123,7 +2122,11 @@ ${targetStyle}`;
         model: HF_MODEL
       });
     }
-  });
+  };
+
+  app.post('/api/generate-hairstyle', handleHairstyleGeneration);
+  app.post('/api/ai/hf-hairstyle-edit', handleHairstyleGeneration);
+
 
 
   // --- REAL DYNAMIC NEARBY PLACES DISCOVERY & GEOCODING API ---
