@@ -9,8 +9,9 @@ import { InferenceClient } from '@huggingface/inference';
 import { Shop, Booking, UserProfile, Service, Barber, Review, Coupon, Membership } from './src/types';
 import { SVG_HAIRSTYLES } from './src/utils/hairLibrary';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables (.env.local overrides .env)
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -1994,7 +1995,14 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
     }
 
     // Server-side HF Token strictly from environment variable
-    let hfToken = (process.env.HF_TOKEN || '').trim();
+    let hfToken = (
+      process.env.HF_TOKEN || 
+      process.env.VITE_HF_TOKEN || 
+      process.env.HUGGINGFACE_TOKEN || 
+      process.env.HUGGING_FACE_TOKEN || 
+      ''
+    ).trim();
+
     if (hfToken.startsWith('hhf_')) {
       hfToken = hfToken.substring(1);
     }
@@ -2002,9 +2010,10 @@ Based on current trend analytics, a **Textured Drop-Fade with Razor Sculpting** 
     if (!hfToken) {
       return res.status(400).json({
         success: false,
-        error: "Server configuration error: HF_TOKEN environment variable is not configured.",
+        error: "Server configuration error: HF_TOKEN environment variable is not configured on the server runtime.",
         generationStatus: "failed",
-        requestId
+        requestId,
+        model: HF_MODEL
       });
     }
 
@@ -2107,11 +2116,11 @@ ${userStyleGoal}`;
       let userFriendlyError = "AI hairstyle generation is temporarily unavailable. Please try again.";
 
       if (errMsg.includes('depleted your monthly included credits') || errMsg.includes('quota') || errMsg.includes('rate limit')) {
-        userFriendlyError = "Free AI image generation limit has been reached. Please try again later.";
+        userFriendlyError = "Hugging Face authentication succeeded, but your account's monthly inference provider credits are depleted. Please add credits at https://hf.co/settings/billing to execute remote Qwen/Qwen-Image-Edit-2511 inference.";
       } else if (errMsg.includes('Invalid token') || errMsg.includes('401') || errMsg.includes('Unauthorized')) {
-        userFriendlyError = "Hugging Face authentication failed. Please verify server HF_TOKEN variable.";
+        userFriendlyError = "Hugging Face authentication failed (HTTP 401). Please verify your HF_TOKEN value in .env.";
       } else if (errMsg.includes('404') || errMsg.includes('not found') || errMsg.includes('unavailable')) {
-        userFriendlyError = "Remote AI inference provider is currently unavailable. Please try again later.";
+        userFriendlyError = "Remote AI inference provider route is currently unavailable. Please try again later.";
       }
 
       return res.status(500).json({
@@ -2119,7 +2128,9 @@ ${userStyleGoal}`;
         error: userFriendlyError,
         generationStatus: "failed",
         requestId,
-        model: HF_MODEL
+        model: HF_MODEL,
+        provider: "fal-ai",
+        hfTokenDetected: true
       });
     }
   };

@@ -939,7 +939,7 @@ export default function AiStylingAssistant({
                     <div className="flex items-center gap-2">
                       <span className={`text-[10px] font-mono tracking-widest ${isLight ? 'text-slate-500' : 'text-zinc-400'} uppercase font-bold`}>Try-On Arena (Active Image)</span>
                       <span className={`text-[8px] font-mono font-bold px-2 py-0.5 rounded-full border ${isLight ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'}`}>
-                        FLUX.1-Kontext-dev
+                        Qwen/Qwen-Image-Edit-2511
                       </span>
                     </div>
 
